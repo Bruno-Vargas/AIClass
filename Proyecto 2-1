@@ -1,0 +1,16 @@
+Tarea 1: Estudiar procesos operacionales, escribir User Stories y crear PRDs
+Modelo elegido: Opus (o Sonnet)
+Justificación: Requiere una alta **complejidad de la tarea** y **necesidad de razonamiento profundo**. 
+
+---
+
+Tarea 2: Evaluar dudas de usuarios de forma continua y brindar soporte
+Modelo elegido: Haiku
+Justificación: Prioriza la **velocidad** de respuesta en tiempo real y el **volumen de uso** elevado. 
+*(Para casos complejos de nivel 2, las consultas se pueden escalar puntualmente a Sonnet).*
+
+---
+
+Tarea 3: Evaluación diaria de datos operacionales para identificar fallas o bajo rendimiento
+Modelo elegido: Sonnet
+Justificación: Requiere un equilibrio entre **complejidad de la tarea** y **necesidad de razonamiento profundo** 

@@ -1,0 +1,322 @@
+Tarea a cumplir:
+Definir el contenido de la sprint Planning de equipo de Servicing
+
+Prompt 1 versión inicial: 
+Actúa como un Agile Coach / Scrum Master experto. Tu objetivo es ayudarme a definir e identificar las tareas más importantes del backlog para la próxima Sprint Planning del equipo de desarrollo.
+use el proceso de entrevista guiada para me ayudar a saber que tenemos que priorizar en la proxima sprint de desarrollo
+
+La salida de esta entrevista tiene que ser un prompt usando las tags XML  para que yo lo pueda usar para priorizar un backlog que te pase junto con el prompt 2
+
+-- Interview -- 
+  
+Actúa como un Agile Coach / Scrum Master experto. Tu objetivo es ayudarme a definir e identificar las tareas más importantes del backlog para la próxima Sprint Planning del equipo de desarrollo.
+use el proceso de entrevista guiada para me ayudar a saber que tenemos que priorizar en la proxima sprint de desarrollo
+
+La salida de esta entrevista tiene que ser un prompt usando las tags XML  para que yo lo pueda usar para priorizar un backlog que te pase junto con el prompt 2
+
+Entendido, Bruno. Voy a guiarte a través de una entrevista estructurada como Agile Coach para identificar los criterios de priorización clave para tu próxima Sprint Planning.
+
+Empecemos con algunas preguntas fundamentales:
+
+¿Cuál es el horizonte de tiempo para la próxima sprint? (duración, fechas de inicio/fin)
+2 semanas
+¿Cuál es el principal driver o constrainte para esta sprint?
+Delivery a cliente/stakeholder
+¿En qué estado está actualmente tu backlog?
+
+Bien refinado y estimado
+Excelente, esto me da un buen contexto. Continuemos profundizando en los criterios de priorización:
+
+¿Quién es el stakeholder principal cuya satisfacción mides en esta sprint?
+Product Manager / Negocio
+¿Existen tareas de DEUDA TÉCNICA o tareas de MANTENIMIENTO que deben incluirse?
+No sé
+¿Tienes bugs o issues en producción que debe priorizar?
+Sí, pero menores (P2/P3)
+
+Bien, ahora voy a ir más específico sobre los criterios de priorización para tu contexto particular:
+¿Cuál es el ROI/impacto de negocio principal que buscas en esta sprint?
+Incrementar ingresos/revenue
+¿Qué tipo de items tienden a tener MAYOR complejidad o riesgo en tu equipo?
+Temas de seguridad o compliance
+¿Cuál es tu tolerancia al RIESGO en esta sprint?
+Agresivo
+
+Perfecto. Una última ronda de preguntas para finalizar la entrevista:
+
+¿Hay algún item BLOQUEADO o con DEPENDENCIAS CRÍTICAS que deben resolverse primero?
+Sí, tengo varios
+¿Existe algún Ítem en el backlog que sea DEUDA TÉCNICA o REFACTORING URGENTE?
+No, o está controlada
+¿Qué Índice de COMPLETITUD esperas de esta sprint?
+80-90%
+
+
+Prompt 2: <generado pelo Prompt 1 + interview>
+Sprint Prioritization Prompt - Sprint Planning
+CONTEXTO DE LA SPRINT
+<sprint_context>
+  <duration>2 weeks</duration>
+  <primary_driver>Delivery a cliente/stakeholder</primary_driver>
+  <backlog_state>Bien refinado y estimado</backlog_state>
+  <primary_stakeholder>Product Manager / Negocio</primary_stakeholder>
+  <business_impact_targets>
+    <target>Incrementar ingresos/revenue</target>
+  </business_impact_targets>
+  <complexity_factors>
+    <factor>Temas de seguridad o compliance</factor>
+  </complexity_factors>
+  <risk_tolerance>Agresivo</risk_tolerance>
+  <blockers_status>Sí, tengo varios</blockers_status>
+  <tech_debt_status>No, o está controlada</tech_debt_status>
+  <sprint_goal_confidence>80-90%</sprint_goal_confidence>
+</sprint_context>
+
+
+CRITERIOS DE PRIORIZACIÓN
+NIVEL 1: CRITERIOS CRÍTICOS (Must Have)
+Estos items DEBEN incluirse en la sprint. Si un item cumple con cualquiera de estos, es prioritario.
+
+<critical_criteria>
+  <criterion priority="1">
+    <name>Resuelve bloqueadores (Dependency Blocker)</name>
+    <description>Items que desbloquean otros trabajo. Son los prerequisitos para que el equipo pueda avanzar en paralelo.</description>
+    <scoring_weight>35%</scoring_weight>
+    <indicators>
+      - ¿Este item desbloquea 2+ otros items?
+      - ¿Sin esto, otros no pueden empezar?
+      - ¿Es una dependencia externa crítica?
+    </indicators>
+  </criterion>
+
+  <criterion priority="2">
+    <name>Delivery comprometido con cliente (Customer Commitment)</name>
+    <description>Features o fixes que ya se prometieron a clientes/stakeholders. Incumplimiento = reputacional.</description>
+    <scoring_weight>30%</scoring_weight>
+    <indicators>
+      - ¿Hay SLA o fecha comprometida con cliente?
+      - ¿Es parte del contrato o acuerdo?
+      - ¿El cliente está esperando esto?
+    </indicators>
+  </criterion>
+
+  <criterion priority="3">
+    <name>Genera ingresos/revenue directo (Revenue Driver)</name>
+    <description>Features de monetización, upsell, o que directamente impacten revenue. Alineado con objetivo negocio.</description>
+    <scoring_weight>25%</scoring_weight>
+    <indicators>
+      - ¿Esto activa funcionalidad de pago?
+      - ¿Aumenta ARPU o conversión?
+      - ¿Es un gate para vender la solución?
+    </indicators>
+  </criterion>
+
+  <criterion priority="4">
+    <name>Mitiga riesgo crítico (P0 Production Issue)</name>
+    <description>Bugs en producción que afectan a usuarios, seguridad o compliance. Solo P0/P1 aplican aquí.</description>
+    <scoring_weight>25%</scoring_weight>
+    <indicators>
+      - ¿Afecta a muchos usuarios simultáneamente?
+      - ¿Es un issue de seguridad o cumplimiento?
+      - ¿Impacta uptime o data integrity?
+    </indicators>
+  </criterion>
+</critical_criteria>
+NIVEL 2: CRITERIOS IMPORTANTES (Should Have)
+Items valiosos que deberían incluirse si hay capacidad.
+
+<important_criteria>
+  <criterion priority="5">
+    <name>Reduce complejidad futura (Reduces Future Risk)</name>
+    <description>Pequeñas inversiones ahora que evitan problemas mayores más adelante. Incluye validación de arquitectura.</description>
+    <scoring_weight>15%</scoring_weight>
+    <indicators>
+      - ¿Simplifica el siguiente release?
+      - ¿Prueba una arquitectura o approach?
+      - ¿Reduce coupling o deuda técnica?
+    </indicators>
+  </criterion>
+
+  <criterion priority="6">
+    <name>Mejora experiencia usuario (UX/Engagement)</name>
+    <description>Features que aumentan satisfacción, retención, o engagement de usuarios. Impacto en churn.</description>
+    <scoring_weight>10%</scoring_weight>
+    <indicators>
+      - ¿Reduce fricción en user journey?
+      - ¿Responde feedback de usuarios?
+      - ¿Mejora métrica de engagement?
+    </indicators>
+  </criterion>
+
+  <criterion priority="7">
+    <name>Baja complejidad, alto valor (Quick Wins)</name>
+    <description>Items pequeños con buen ROI. Bueno para mantener morale y velocidad visible.</description>
+    <scoring_weight>8%</scoring_weight>
+    <indicators>
+      - Estimado en ≤ 3 story points
+      - Poco riesgo técnico
+      - Valor tangible para usuario/stakeholder
+    </indicators>
+  </criterion>
+</important_criteria>
+NIVEL 3: CRITERIOS SECUNDARIOS (Nice to Have)
+Items valiosos pero pueden esperar.
+
+<secondary_criteria>
+  <criterion priority="8">
+    <name>Deuda técnica menor (Tech Debt - Low Priority)</name>
+    <description>Refactoring, limpieza, o mejora técnica que no bloquea pero mejora mantenibilidad.</description>
+    <scoring_weight>5%</scoring_weight>
+    <indicators>
+      - No bloquea feature development
+      - Mejora velocity a largo plazo
+      - Bajo riesgo de regresión
+    </indicators>
+  </criterion>
+
+  <criterion priority="9">
+    <name>Issues menores en producción (P2/P3 Bugs)</name>
+    <description>Bugs de menor impacto. Molestos pero no críticos. Se pueden tickets para soporte.</description>
+    <scoring_weight>3%</scoring_weight>
+    <indicators>
+      - Afecta a pocos usuarios
+      - Existe workaround
+      - Bajo costo de fix
+    </indicators>
+  </criterion>
+
+  <criterion priority="10">
+    <name>Investigación o Spike (Learning/Discovery)</name>
+    <description>Trabajo de exploración, validación, o proof of concept para reducir riesgo de futuros items.</description>
+    <scoring_weight>2%</scoring_weight>
+    <indicators>
+      - Acota incertidumbre de futuro
+      - Bajo time-box (1-2 días)
+      - Resultado es documentación o prototype
+    </indicators>
+  </criterion>
+</secondary_criteria>
+
+
+REGLAS DE PRIORIZACIÓN
+<prioritization_rules>
+  <rule id="1">
+    <name>Rule of Blockers First</name>
+    <description>Resuelve TODOS los critical_criteria bloqueadores antes de cualquier otra cosa. Sin esto, el equipo se queda parado.</description>
+    <action>Busca items que marques como "desbloquea 2+ items" y colócalos en top 3.</action>
+  </rule>
+
+  <rule id="2">
+    <name>Rule of Customer Commitments</name>
+    <description>Si hay deadline con cliente, ese item es TOP 3 garantizado (a menos que ya esté en desarrollo).</description>
+    <action>Pregunta: "¿Hay SLA o fecha prometida?" Si sí → prioridad máxima.</action>
+  </rule>
+
+  <rule id="3">
+    <name>Rule of Revenue Safety</name>
+    <description>Items que generan ingresos directo compiten por espacio con bloqueadores/commitments. Evalúa impacto vs. complejidad.</description>
+    <action>Si un revenue driver es simple (< 5pts), incluye. Si es complejo (>8pts), weigh against commitments.</action>
+  </rule>
+
+  <rule id="4">
+    <name>Rule of 80-90% Confidence</name>
+    <description>Tu objetivo es 80-90% completitud. Con risk_tolerance=agresivo, puedes ser audaz, pero deja ~20% de buffer.</description>
+    <action>Capacity_planning: Si equipo tiene 200 pts de capacidad, plan para ~170 pts máximo.</action>
+  </rule>
+
+  <rule id="5">
+    <name>Rule of Security/Compliance Priority</name>
+    <description>Tu equipo tiene complejidad en seguridad/compliance. Estos items merecen extra scrutiny y timing.</description>
+    <action>Para security items: valida dependencias, identifica qué puede paralelizarse, planifica testing adicional.</action>
+  </rule>
+
+  <rule id="6">
+    <name>Rule of Parallel Execution</name>
+    <description>Como tienes "varios bloqueadores", mapea qué items pueden correr en paralelo post-resolución.</description>
+    <action>Crea una simple dependency map: ¿Qué bloquea a qué? Identifica crítica ruta.</action>
+  </rule>
+
+  <rule id="7">
+    <name>Rule of No P0/P1 Overflow</name>
+    <description>Bugs P0/P1 son interruptores. Si hay varios, reserva 10-15% de capacidad para ellos.</description>
+    <action>Tu backlog tiene P2/P3 only → OK incluir 1-2 en planning. Si nuevos P0 surgen, replancifica.</action>
+  </rule>
+
+  <rule id="8">
+    <name>Rule of Story Distribution</name>
+    <description>Evita una sprint de 100% bloqueadores o un sprint de 100% features. Mezcla.</description>
+    <action>Target mix: 30% bloqueadores → 40% commitments/revenue → 20% quick wins → 10% tech debt/learning.</action>
+  </rule>
+</prioritization_rules>
+
+
+CÓMO USAR ESTE PROMPT
+PASO 1: Evaluación de cada ítem del backlog
+Para cada item en tu backlog, responde:
+
+<item_evaluation_template>
+  <item_id>STORY-123</item_id>
+  <title>Feature X</title>
+  
+  <!-- Scoring: Marca SÍ si aplica, NO si no -->
+  <critical_checks>
+    <is_blocker>SÍ/NO</is_blocker>                          <!-- ¿Desbloquea 2+ items? -->
+    <is_customer_commitment>SÍ/NO</is_customer_commitment>   <!-- ¿Deadline con cliente? -->
+    <is_revenue_driver>SÍ/NO</is_revenue_driver>             <!-- ¿Genera ingresos directo? -->
+    <is_p0_p1_issue>SÍ/NO</is_p0_p1_issue>                   <!-- ¿Es crítico en prod? -->
+  </critical_checks>
+
+  <secondary_checks>
+    <reduces_future_risk>SÍ/NO</reduces_future_risk>         <!-- ¿Simplifica futuros items? -->
+    <improves_ux>SÍ/NO</improves_ux>                         <!-- ¿Mejora experiencia? -->
+    <is_quick_win>SÍ/NO</is_quick_win>                       <!-- ¿<3pts, alto valor? -->
+    <is_tech_debt>SÍ/NO</is_tech_debt>                       <!-- ¿Es deuda técnica? -->
+  </secondary_checks>
+
+  <estimate_story_points>_____</estimate_story_points>
+  <complexity_flag>Low / Medium / High</complexity_flag>     <!-- ¿Incluye security? ¿Integración? -->
+  
+  <priority_score>___/100</priority_score>                   <!-- Automático: suma de criterios -->
+  <final_priority>TIER 1 (Top) / TIER 2 (Include) / TIER 3 (If Capacity) / TIER 4 (Backlog)</final_priority>
+</item_evaluation_template>
+PASO 2: Aggregar y planificar
+Agrupa items por TIER
+Valida que Tier 1 + Tier 2 < 90% de capacidad
+Identifica dependencias dentro de Tier 1 y Tier 2
+Crea Sprint Goal basado en top 3-5 items de Tier 1
+PASO 3: Comunicar al equipo
+<sprint_goal_template>
+  <goal_statement>
+    "Esta sprint nos enfocamos en [bloqueador principal] y [commitment cliente/revenue driver], 
+     mientras avanzamos en [quick wins] para mantener velocidad y moral del equipo."
+  </goal_statement>
+  
+  <tier_1_items>
+    <!-- Bloqueadores + Commitments + Revenue drivers principales -->
+  </tier_1_items>
+  
+  <tier_2_items>
+    <!-- Items de soporte que cierran la capacidad al 80-90% -->
+  </tier_2_items>
+  
+  <success_metrics>
+    - Todos los bloqueadores resueltos ✓
+    - [Commitment cliente] delivered ✓
+    - [Revenue driver] en producción ✓
+    - 80-90% de items completados ✓
+  </success_metrics>
+</sprint_goal_template>
+
+
+NOTAS IMPORTANTES PARA TU CONTEXTO
+Tienes varios bloqueadores: Dedica la primera 2-3 días de la sprint (o antes) a mapear y resolver. Usa el tiempo de otros para validación/testing mientras desbloquean.
+
+Prioridad: Seguridad/Compliance: Estos items tienden a ser complejos en tu equipo. Identifica temprano, asigna a senior devs, deja espacio para QA/review.
+
+Tolerancia Agresiva + 80-90% confianza: Puedes asumir riesgo, pero sé estratégico. Reserva 15-20% de buffer.
+
+No hay deuda técnica urgente: ¡Bien! Esto te da flexibilidad. Pero monitorea si surge durante la sprint.
+
+Solo P2/P3 en producción: No necesitas interrupt-driven planning. Si nuevos P0/P1 surgen, replancifica.
+
+

@@ -1,0 +1,1751 @@
+<version1>
+---------------
+name: sprint-board-report description: Generates executive sprint report in HTML for board of directors presentation. Collects Linear data (issues, status, dates, blockers), builds tables, charts, and qualitative analysis. Use ALWAYS when you need: sprint report for board, project status, sprint health analysis, board report, progress dashboard, technical progress presentation. Supports Brazil team (Tech-BR) and Mexico team (Buyer) with filters by: Cycle (specific sprint), period (last N days), date range, specific project. Filters can be combined.
+Sprint Board Report - Scrum Master for Board of Directors
+What This Skill Does
+
+Transforms raw Linear data into an executive HTML report ready for presentation to the board of directors. Collects issues, analyzes status, identifies blockers, and delivers:
+
+Consolidated progress table (by assignee and status)
+2 types of charts (Burndown + Distribution / Tasks by Person + % Progress)
+Realistic qualitative assessment of sprint health
+Action recommendation based on data
+
+Tone: Neutral, direct, no sugar-coating. You get the truth even if it's ugly.
+
+Expected Input
+
+The user will provide:
+
+Sprint Board Report [Team] [Filter]
+
+Team: Brazil or Mexico
+Filter: Cycle:[name] | last N days | [Start date - End date] | Project:[name]
+Valid Examples:
+"Sprint Board Report Brazil Cycle:Sprint 1"
+"Sprint Board Report Brazil Cycle:Q3-2026"
+"Sprint Board Report Mexico Cycle:Sprint-2"
+"Sprint Board Report Brazil last 14 days"
+"Sprint Board Report Brazil 2026-09-01 to 2026-09-30"
+"Sprint Board Report Brazil Cycle:Sprint-1 Project:Negotiation Phase"
+"Sprint Board Report Mexico Cycle:Delivery last 7 days"
+Supported Filters
+Type	Syntax	Example	Notes
+Cycle	Cycle:[name]	Cycle:Sprint 1	Exact cycle name in Linear. Uses cycle param in Linear MCP. Cycles are sprints/periods defined in Linear.
+Period	last N days	last 14 days	Filters by updatedAt or createdAt
+Date Range	YYYY-MM-DD to YYYY-MM-DD	2026-09-01 to 2026-09-30	Specific start and end dates
+Project	Project:[name]	Project:Origination	Project name or ID in Linear
+Status	Status:[status]	Status:In Progress	Filters by specific status (In Progress, Done, To-Do, etc)
+Combined	Multiple filters	Cycle:Sprint-1 Project:Tech-BR Status:Done	All filters apply with AND logic
+🔄 About Cycles (Sprints/Periods)
+
+What is a Cycle in Linear?
+
+A Cycle is a defined time period in Linear (typically 1-2 weeks)
+Corresponds to a "Sprint" in Scrum methodology
+Each team (Tech-BR, Buyer) can have their own cycles
+Issues are assigned to cycles for organization
+
+How to find available cycles:
+
+Before running report, ask the user:
+"What are the cycles/sprints in your team? (ex: Sprint 1, Sprint 2, Q3-2026, etc)"
+
+Or use Linear MCP:
+  Linear:list_cycles(teamId: "574cbdb8-7380-49fd-af23-fb55917b5e6d")  // Tech-BR
+  Linear:list_cycles(teamId: "b8dc3e9b-2302-4837-96b7-536cb7c0d1d6")  // Buyer
+
+Examples of use with Cycles:
+
+- "Sprint Board Report Brazil Cycle:Sprint 1"
+  → Fetches all issues from Brazil team (Tech-BR) 
+     assigned to cycle "Sprint 1"
+
+- "Sprint Board Report Mexico Cycle:Sprint 2"
+  → Fetches all issues from Mexico team (Buyer) 
+     assigned to cycle "Sprint 2"
+
+- "Sprint Board Report Brazil Cycle:Sprint 1 Status:In Progress"
+  → Only issues in "In Progress" status in Sprint 1
+
+- "Sprint Board Report Brazil Cycle:Sprint 1 Project:Negotiation Phase"
+  → Only issues from project "Negotiation Phase" 
+     in Sprint 1
+Parsing User Input
+
+Extract Team:
+
+"Sprint Board Report [BRAZIL/MEXICO] ..." 
+→ Brazil = Tech-BR, Mexico = Buyer
+
+Extract Cycle:
+
+Pattern: "Cycle:[name]" or "[sprint-name]"
+Examples:
+  "Sprint Board Report Brazil Cycle:Sprint 1" → cycle = "Sprint 1"
+  "Sprint Board Report Brazil Sprint 1" → cycle = "Sprint 1" (inferred)
+  "Sprint Board Report Mexico Cycle:Q3-Delivery" → cycle = "Q3-Delivery"
+
+Extract Period:
+
+Pattern: "last N days" or "YYYY-MM-DD to YYYY-MM-DD"
+Examples:
+  "last 7 days" → updatedAt: "-P7D"
+  "last 14 days" → updatedAt: "-P14D"
+  "2026-09-01 to 2026-09-30" → createdAt and updatedAt range
+
+Extract Project (optional):
+
+Pattern: "Project:[name]"
+Examples:
+  "Cycle:Sprint-1 Project:Origination" → project = "Origination"
+  "Project:Buyer" → project = "Buyer"
+
+Team → Linear Project Mapping
+
+Team	Linear Project
+Brazil	Tech-BR
+Mexico	Buyer
+
+When user says "Brazil", query Linear on Tech-BR project. When user says "Mexico", query Buyer project.
+
+📌 Quick Reference: Known Cycles
+Brazil Team (Tech-BR)
+Sprint 1
+Sprint 2
+(Request complete list if needed)
+Mexico Team (Buyer)
+Sprint 1
+Sprint 2
+(Request complete list if needed)
+
+To discover current cycles:
+
+Ask the user: "Which cycle/sprint do you want to analyze?"
+Or use: Linear:list_cycles(teamId: [team-id])
+Step-by-Step Process
+0. Discover Available Cycles (OPTIONAL BUT RECOMMENDED)
+
+If user doesn't know exact cycle name:
+
+Use Linear:list_cycles to fetch cycles from team:
+  - Tech-BR (Brazil): teamId = "574cbdb8-7380-49fd-af23-fb55917b5e6d"
+  - Buyer (Mexico): teamId = "b8dc3e9b-2302-4837-96b7-536cb7c0d1d6"
+
+Result: List of cycles with names, status (active/ended), dates
+Display to user: "Available cycles: Sprint 1, Sprint 2, Q3-Delivery, etc"
+
+When to do this:
+
+User says "Sprint Board Report Brazil" without specifying cycle
+User doesn't know exact cycle name
+Before fetching issues (prevents failure)
+1. Collect Data from Linear
+
+Use Linear MCP tools to:
+
+Determine the filter:
+If user said "Cycle:Sprint 1" → use cycle: "Sprint 1" in Linear MCP
+If said "last 14 days" → use updatedAt: "-P14D"
+If said date range → use createdAt and updatedAt with ISO-8601
+If said specific project → use project: "project_name"
+If said team → use Brazil team (Tech-BR) or Mexico team (Buyer)
+List issues with correct filters via Linear:list_issues:
+   Linear:list_issues({
+     cycle: "Sprint 1",           // If filtering by cycle
+     updatedAt: "-P14D",          // If filtering by period
+     project: "Tech-BR",          // Tech-BR (Brazil) or Buyer (Mexico)
+     limit: 250,
+     fields: [...all necessary fields...]
+   })
+Extract critical information:
+ID and title
+Description/Objective summary (1-2 sentences)
+Status (Backlog / Todo / In Progress / In Review / Done)
+Assignee (responsible person)
+Creation date
+Update date
+Completion date (if applicable)
+Blocker links (if applicable)
+Priority (if relevant)
+2. Structure Data
+
+Group into JSON structure:
+
+json
+{
+  "team": "Brazil",
+  "project": "Tech-BR",
+  "sprint": "Sprint 1",
+  "period": "2026-09-01 to 2026-09-30",
+  "issues": [
+    {
+      "id": "BR-123",
+      "title": "Refactor authentication",
+      "description": "Migrate from OAuth1 to OAuth2",
+      "status": "In Progress",
+      "assignee": "João Silva",
+      "created": "2026-09-01",
+      "updated": "2026-09-10",
+      "completed": null,
+      "blockers": ["BR-120"],
+      "blocked_by": [],
+      "priority": "High"
+    },
+    {
+      "id": "BR-124",
+      "title": "Document API",
+      "description": "Create Swagger docs for sales endpoints",
+      "status": "Done",
+      "assignee": "Maria Santos",
+      "created": "2026-09-02",
+      "updated": "2026-09-08",
+      "completed": "2026-09-08",
+      "blockers": [],
+      "blocked_by": [],
+      "priority": "Medium"
+    }
+  ],
+  "summary": {
+    "total": 15,
+    "by_status": {
+      "Backlog": 2,
+      "Todo": 5,
+      "In Progress": 6,
+      "In Review": 1,
+      "Done": 1
+    },
+    "by_assignee": {
+      "João Silva": 5,
+      "Maria Santos": 4,
+      "Unassigned": 6
+    },
+    "blocked_count": 3,
+    "completion_rate": 6.67
+  }
+}
+3. Calculate Metrics
+
+For Chart A (Burndown + Distribution):
+
+Days since sprint start
+Work remaining (non-Done)
+Work completed (Done)
+Ideal burndown (straight line 100% → 0%)
+Distribution by status in %
+
+For Chart B (People + Progress):
+
+Tasks per assignee
+% completed per assignee
+Overall % progress
+4. Qualitative Health Analysis
+
+Evaluate based on data:
+
+Signs of "Good":
+
+70% in Done
+
+Few or no blocked tasks
+Visible progress in recent days
+Tasks distributed equitably
+No overdue tasks
+
+Signs of "At Risk":
+
+<70% in Done
+Many blocked tasks (>3)
+Slow or stalled progress
+Bottlenecks identified (one person carrying everything)
+Tasks in Progress for >5 days
+
+Signs of "Blocked":
+
+<50% in Done
+Many blocked tasks (>3)
+Stalled tasks
+Critical blockers identified
+
+Signs of "Completed":
+
+100% or very close to Done
+Or end date already passed
+
+Possible Conclusions:
+
+"Sprint on track - Keep it up"
+"Sprint at risk - Immediate action needed"
+"Sprint blocked - Critical unblocking required"
+"Sprint completed successfully"
+"Sprint behind schedule with accumulated debt"
+5. Generate HTML with Charts
+
+Create HTML with:
+
+Executive header (team, sprint, period, % completion)
+Table 1: Consolidated issues (ID, Title, Status, Assignee, Days in Progress)
+Table 2: Summary by Status
+Table 3: Summary by Assignee
+Chart A1: Burndown (line chart: days vs work)
+Chart A2: Status Distribution (pie or bar chart)
+Chart B1: Tasks by Person (bar chart)
+Chart B2: Overall Progress (gauge or progress bar)
+Analysis Section: Realistic paragraph about health
+Recommendation: Suggested action based on data
+Health Analysis Criteria
+Green (Sprint Going Well)
+Conditions:
+- Completion rate > 70%
+- Blocked < 2 tasks
+- No task >5 days in Progress
+- Equitable distribution across team
+
+Message template:
+
+"Sprint {{SPRINT}} is on track. {{DONE_COUNT}}/{{TOTAL_COUNT}} tasks 
+completed ({{COMPLETION_RATE}}%). No critical blockers identified. 
+Team {{TEAM}} maintains consistent pace. Continue current trajectory."
+Yellow (Sprint At Risk)
+Conditions:
+- 40% < Completion rate < 70%
+- 2-3 blocked tasks
+- Some tasks in Progress for >5 days
+- Workload imbalance on team
+
+Message template:
+
+"Sprint {{SPRINT}} at risk. Only {{COMPLETION_RATE}}% completed with 
+{{BLOCKED_COUNT}} blocked tasks. {{SLOW_TASKS}} overdue tasks in 
+Progress. {{PERSON}} carries {{OVERLOAD_PCT}}% of work while others have less. 
+Action needed in next 2 days."
+Red (Sprint Blocked)
+Conditions:
+- Completion rate < 40%
+- > 3 blocked tasks
+- Many stalled tasks in Progress
+- Or severe bottlenecks
+
+Message template:
+
+"Sprint {{SPRINT}} blocked. Only {{COMPLETION_RATE}}% completion. 
+{{BLOCKED_COUNT}} blocked tasks impacting {{IMPACTED_TEAM}}. {{CRITICAL}} 
+critical blocker(s) need immediate resolution. Recommendation: stop and unblock today."
+Completed (Sprint Done)
+Conditions:
+- Completion rate = 100% or >95%
+- No blockers
+
+Message template:
+
+"Sprint {{SPRINT}} completed successfully. {{TOTAL_COUNT}} tasks done. 
+Team {{TEAM}} delivered {{ACHIEVEMENTS}}. Quality: {{QA_STATUS}}."
+Action Recommendation
+
+Based on analysis, suggest one concrete action:
+
+If Green:
+
+"Maintain pace. Next sprint can be more aggressive."
+"Team in sync. Consider increasing task complexity."
+
+If Yellow:
+
+"Identify top 2 blockers tomorrow and resolve."
+"Rebalance workload from {{PERSON}} to {{OTHER_PERSON}}."
+"{{BLOCKED_TASKS}} need urgent unblocking. Who can help?"
+
+If Red:
+
+"⚠️ URGENT: Unblocking meeting today with {{STAKEHOLDERS}}."
+"Sprint may not close. Consider moving {{TASK_COUNT}} tasks to next sprint."
+"Bottleneck at {{BLOCKER}}: allocate {{RESOURCE}} to resolve."
+
+If Completed:
+
+"Excellent work. Retrospective recommended to capture what went well."
+Practical Step-by-Step Examples
+Example 1: Filter by Cycle (Specific Sprint)
+
+User Input:
+
+Sprint Board Report Brazil Cycle:Sprint 1
+
+What You Do:
+
+Parse: team=Brazil→Tech-BR, cycle="Sprint 1"
+Call: Linear:list_issues({ cycle: "Sprint 1", team: "Tech-BR", limit: 250 })
+Collect all issues from Sprint 1
+Calculate burndown/status/blockers
+Generate HTML + charts
+Deliver to user ready for board presentation
+Example 2: Filter by Period (Last N Days)
+
+User Input:
+
+Sprint Board Report Mexico last 14 days
+
+What You Do:
+
+Parse: team=Mexico→Buyer, period=-P14D
+Call: Linear:list_issues({ updatedAt: "-P14D", team: "Buyer", limit: 250 })
+Collect issues updated in last 14 days
+Calculate metrics
+Generate HTML + charts
+Deliver to user
+Example 3: Filter by Exact Date Range
+
+User Input:
+
+Sprint Board Report Brazil 2026-09-01 to 2026-09-30
+
+What You Do:
+
+Parse: team=Brazil→Tech-BR, startDate=2026-09-01, endDate=2026-09-30
+Call: Linear:list_issues({ createdAt: "2026-09-01", updatedAt: "2026-09-30", team: "Tech-BR" })
+Collect issues created/updated in this period
+Calculate metrics
+Generate HTML + charts
+Deliver to user
+Example 4: Filter by Cycle + Specific Project
+
+User Input:
+
+Sprint Board Report Brazil Cycle:Sprint-1 Project:Negotiation Phase
+
+What You Do:
+
+Parse: team=Brazil→Tech-BR, cycle="Sprint-1", project="Negotiation Phase"
+Call: Linear:list_issues({ cycle: "Sprint-1", project: "Negotiation Phase", team: "Tech-BR" })
+Collect only issues from Negotiation Phase sprint 1
+Calculate focused metrics
+Generate HTML + charts
+Deliver to user
+Filter Troubleshooting
+
+Problem: "Cycle not found"
+
+Solution: List all available cycles from team:
+Linear:list_cycles({ teamId: "[team-id]" })
+Then confirm exact name with user.
+
+Problem: "No issues returned"
+
+Possible causes:
+1. Cycle exists but has no issues. Check status (active, ended?)
+2. Period too restrictive. Try expanding dates.
+3. Project is empty. Try without project filter.
+
+Solution: Progressive search (fewer filters → more issues)
+
+Problem: "Cycle returns issues from wrong team"
+
+Solution: Add team filter with cycle:
+Linear:list_issues({
+  cycle: "Sprint 1",
+  team: "Tech-BR"  // Add this
+})
+
+Problem: "ISO-8601 period not recognized"
+
+Expected format: "-P[N]D" (ex: "-P14D" = last 14 days)
+If user says "last 2 weeks":
+  2 weeks = 14 days → "-P14D"
+Quality Checklist
+
+Before delivering the report, verify:
+
+ All data is correct (verified in Linear)
+ Tables have specified columns
+ 4 Charts load and display data
+ Analysis is realistic (not sugar-coated)
+ Recommendation is actionable
+ Blockers are highlighted (if any)
+ Workload distribution is visible
+ HTML is responsive (ready for projector)
+ Generated date/time are correct
+Quick Reference - Available Cycles
+
+To discover which cycle to use:
+
+bash
+# If user doesn't know exact cycle name, run:
+Linear:list_cycles({ teamId: "574cbdb8-7380-49fd-af23-fb55917b5e6d" })  # Brazil (Tech-BR)
+Linear:list_cycles({ teamId: "b8dc3e9b-2302-4837-96b7-536cb7c0d1d6" })  # Mexico (Buyer)
+
+This returns all available cycles (sprints) in team. You can then:
+
+Show user the cycle list
+Ask them to choose
+Use exact name in filter
+
+Examples of cycles that may exist:
+
+Sprint 1, Sprint 2, Sprint 3
+Q3-Planning, Q3-Execution, Q3-Wrap
+Delivery-Wave-1, Delivery-Wave-2
+Or any other team naming convention
+⚡ Quick Start: How to Use Cycles
+If you're new to this, start here:
+
+Step 1: Discover available cycles
+
+Ask: "What are the cycles/sprints in your team?"
+Or run: Linear:list_cycles to list automatically
+
+Step 2: Use a cycle in the filter
+
+Input: "Sprint Board Report Brazil Cycle:Sprint 1"
+           ↓
+Result: Report with ALL issues from Sprint 1
+
+Step 3: Customize if needed
+
+With project:   "... Cycle:Sprint 1 Project:Negotiation Phase"
+With status:    "... Cycle:Sprint 1 Status:In Progress"
+With period:    "... Cycle:Sprint 1 last 7 days"
+Valid Syntax (Copy & Paste):
+# Basic - Specific sprint:
+Sprint Board Report Brazil Cycle:Sprint 1
+
+# With project:
+Sprint Board Report Brazil Cycle:Sprint 1 Project:Origination
+
+# With status:
+Sprint Board Report Mexico Cycle:Sprint 2 Status:Done
+
+# All filters:
+Sprint Board Report Brazil Cycle:Sprint 1 Project:AI Harness Status:In Progress
+Teams and Their Team IDs:
+Brazil = Tech-BR
+  - teamId: 574cbdb8-7380-49fd-af23-fb55917b5e6d
+
+Mexico = Buyer
+  - teamId: b8dc3e9b-2302-4837-96b7-536cb7c0d1d6
+Important Notes
+Tone is critical: Directors need truth. If it's bad, say it's bad.
+Data comes from Linear: Always sync. Don't invent numbers.
+HTML is self-explanatory: No need for verbal presentation to understand.
+Blockers save lives: Always highlight. One blocked task stops 3 others.
+Recommendations are actions: Not generic. Must point to WHO, WHAT, and WHEN.
+
+</version1>
+<improvements>
+does this skill follow the best practices?
+✅ What's Done Well:
+Clear Name — sprint-board-report is descriptive and follows naming conventions
+Comprehensive Documentation — Very detailed with sections, examples, troubleshooting
+Multiple Examples — 4 step-by-step examples with different filter combinations
+Error Handling — Troubleshooting section covers common issues
+Team Context — Includes team IDs, mappings, actual team info
+Process Clarity — Steps numbered 0-5, easy to follow
+Input Specification — Clear syntax, examples provided
+Quality Checklist — Pre-delivery validation included
+
+⚠️ Areas for Improvement:
+1. Frontmatter YAML - Too Minimal
+2. Description Length
+3. Trigger Keywords Not Explicit
+4. Output Format Not Specified in Frontmatter
+5. HTML Template Placement
+6. Team IDs Hardcoded
+7. Cycle Names Are Stale
+8. Missing: When NOT to Use
+9. Missing: Skill Maintenance Info
+10. Emojis in Headers
+11. No Version Control
+12. No Performance Notes
+
+After some iteractions and fixes, here is the final vesion 
+</improvements>
+
+<version2>
+---
+name: sprint-board-report
+description: Generates executive sprint reports in HTML for board presentation. Analyzes Linear data with health assessment and actionable recommendations.
+tags: ["reporting", "sprint", "linear", "board", "executive", "scrum", "team-health"]
+aliases: ["board-report", "sprint-status", "team-health-check", "cycle-status", "sprint-dashboard"]
+triggers:
+  - "sprint board report"
+  - "cycle report"
+  - "board report"
+  - "sprint status"
+  - "team health check"
+  - "sprint health"
+output_format:
+  type: "HTML"
+  interactive: true
+  responsive: true
+  charts: 4
+  tables: 3
+dependencies: ["Linear MCP", "Linear API access"]
+teams: ["Brazil (Tech-BR)", "Mexico (Buyer)"]
+version: "1.0.0"
+last_updated: "2026-09-10"
+changelog:
+  - "1.0.0 (2026-09-10): Initial release with full Cycle filtering, multi-filter support, qualitative health analysis"
+---
+
+# 📊 Sprint Board Report - Scrum Master for Board of Directors
+
+## What This Skill Does
+
+Transforms raw Linear data into an **executive HTML report** ready for presentation to the board of directors. Collects issues, analyzes status, identifies blockers, and delivers:
+
+- Consolidated progress table (by assignee and status)
+- 2 types of charts (Burndown + Distribution / Tasks by Person + % Progress)
+- Realistic qualitative assessment of sprint health
+- Action recommendation based on data
+
+**Tone**: Neutral, direct, no sugar-coating. You get the truth even if it's ugly.
+
+---
+
+## ⚙️ Configuration Required
+
+**Before using this skill, verify these values are current in YOUR system:**
+
+| Property | Value | How to Find |
+|----------|-------|------------|
+| Brazil Team ID | `[REDACTED_BRAZIL_ID]` | `Linear:list_teams()` → find "Tech-BR" |
+| Mexico Team ID | `[REDACTED_MEXICO_ID]` | `Linear:list_teams()` → find "Buyer" |
+| Project Mappings | Brazil=Tech-BR, Mexico=Buyer | Confirm in Linear workspace |
+| Current Cycles | Run `Linear:list_cycles()` | See what cycles exist TODAY |
+
+**Why this matters:** Team IDs and project names can change. Always verify before running the report.
+
+---
+
+## Expected Input
+
+The user will provide:
+
+```
+Sprint Board Report [Team] [Filter]
+
+Team: Brazil or Mexico
+Filter: Cycle:[name] | last N days | [Start date - End date] | Project:[name]
+```
+
+### Valid Examples:
+- "Sprint Board Report Brazil Cycle:Sprint 1"
+- "Sprint Board Report Brazil Cycle:Q3-2026"
+- "Sprint Board Report Mexico Cycle:Sprint-2"
+- "Sprint Board Report Brazil last 14 days"
+- "Sprint Board Report Brazil 2026-09-01 to 2026-09-30"
+- "Sprint Board Report Brazil Cycle:Sprint-1 Project:Negotiation Phase"
+- "Sprint Board Report Mexico Cycle:Delivery last 7 days"
+
+---
+
+## Supported Filters
+
+| Type | Syntax | Example | Notes |
+|------|--------|---------|-------|
+| **Cycle** | `Cycle:[name]` | `Cycle:Sprint 1` | Exact cycle name in Linear. Uses `cycle` param in Linear MCP. Cycles are sprints/periods defined in Linear. |
+| **Period** | `last N days` | `last 14 days` | Filters by `updatedAt` or `createdAt` |
+| **Date Range** | `YYYY-MM-DD to YYYY-MM-DD` | `2026-09-01 to 2026-09-30` | Specific start and end dates |
+| **Project** | `Project:[name]` | `Project:Origination` | Project name or ID in Linear |
+| **Status** | `Status:[status]` | `Status:In Progress` | Filters by specific status (In Progress, Done, To-Do, etc) |
+| **Combined** | Multiple filters | `Cycle:Sprint-1 Project:Tech-BR Status:Done` | All filters apply with AND logic |
+
+---
+
+### 🔄 About Cycles (Sprints/Periods)
+
+**What is a Cycle in Linear?**
+- A **Cycle** is a defined time period in Linear (typically 1-2 weeks)
+- Corresponds to a "Sprint" in Scrum methodology
+- Each team (Tech-BR, Buyer) can have their own cycles
+- Issues are assigned to cycles for organization
+
+**How to find available cycles:**
+```
+Before running report, ask the user:
+"What are the cycles/sprints in your team? (ex: Sprint 1, Sprint 2, Q3-2026, etc)"
+
+Or use Linear MCP:
+  Linear:list_cycles(teamId: "[team-id]")
+  → Returns list of cycles with names, status, dates
+```
+
+**Examples of use with Cycles:**
+```
+- "Sprint Board Report Brazil Cycle:Sprint 1"
+  → Fetches all issues from Brazil team (Tech-BR) 
+     assigned to cycle "Sprint 1"
+
+- "Sprint Board Report Mexico Cycle:Sprint 2"
+  → Fetches all issues from Mexico team (Buyer) 
+     assigned to cycle "Sprint 2"
+
+- "Sprint Board Report Brazil Cycle:Sprint 1 Status:In Progress"
+  → Only issues in "In Progress" status in Sprint 1
+
+- "Sprint Board Report Brazil Cycle:Sprint 1 Project:Negotiation Phase"
+  → Only issues from project "Negotiation Phase" 
+     in Sprint 1
+```
+
+---
+
+## Parsing User Input
+
+**Extract Team:**
+```
+"Sprint Board Report [BRAZIL/MEXICO] ..." 
+→ Brazil = Tech-BR, Mexico = Buyer
+```
+
+**Extract Cycle:**
+```
+Pattern: "Cycle:[name]" or "[sprint-name]"
+Examples:
+  "Sprint Board Report Brazil Cycle:Sprint 1" → cycle = "Sprint 1"
+  "Sprint Board Report Brazil Sprint 1" → cycle = "Sprint 1" (inferred)
+  "Sprint Board Report Mexico Cycle:Q3-Delivery" → cycle = "Q3-Delivery"
+```
+
+**Extract Period:**
+```
+Pattern: "last N days" or "YYYY-MM-DD to YYYY-MM-DD"
+Examples:
+  "last 7 days" → updatedAt: "-P7D"
+  "last 14 days" → updatedAt: "-P14D"
+  "2026-09-01 to 2026-09-30" → createdAt and updatedAt range
+```
+
+**Extract Project (optional):**
+```
+Pattern: "Project:[name]"
+Examples:
+  "Cycle:Sprint-1 Project:Origination" → project = "Origination"
+  "Project:Buyer" → project = "Buyer"
+```
+
+Team → Linear Project Mapping
+
+| Team | Linear Project |
+|------|----------------|
+| Brazil | Tech-BR |
+| Mexico | Buyer |
+
+When user says "Brazil", query Linear on **Tech-BR** project.
+When user says "Mexico", query **Buyer** project.
+
+---
+
+## 📌 Quick Reference: Known Cycles
+
+### Example cycles (yours will differ):
+```
+Brazil Team (Tech-BR):
+- Sprint 1, Sprint 2, Sprint 3
+- Q3-Planning, Q3-Execution
+
+Mexico Team (Buyer):
+- Sprint 1, Sprint 2, Sprint 3
+- Delivery-Wave-1, Delivery-Wave-2
+```
+
+**To discover YOUR actual cycles:**
+```
+Run: Linear:list_cycles(teamId: "[your-team-id]")
+Then show user: "Available cycles: [list from API]"
+```
+
+---
+
+## Step-by-Step Process
+
+### 0. Discover Available Cycles (RECOMMENDED)
+
+If user doesn't know exact cycle name:
+
+```
+Use Linear:list_cycles to fetch cycles from team:
+  Linear:list_cycles(teamId: "[team-id]")
+  
+Result: List of cycles with names, status (active/ended), dates
+Display to user: "Available cycles: Sprint 1, Sprint 2, Q3-Delivery, etc"
+```
+
+**When to do this:**
+- User says "Sprint Board Report Brazil" without specifying cycle
+- User doesn't know exact cycle name
+- Before fetching issues (prevents failure)
+
+---
+
+### 1. Collect Data from Linear
+
+Use Linear MCP tools to:
+
+1. **Determine the filter**:
+   - If user said "Cycle:Sprint 1" → use `cycle: "Sprint 1"` in Linear MCP
+   - If said "last 14 days" → use `updatedAt: "-P14D"` 
+   - If said date range → use `createdAt` and `updatedAt` with ISO-8601
+   - If said specific project → use `project: "project_name"`
+   - If said team → use Brazil team (Tech-BR) or Mexico team (Buyer)
+
+2. **List issues** with correct filters via `Linear:list_issues`:
+   ```
+   Linear:list_issues({
+     cycle: "Sprint 1",           // If filtering by cycle
+     updatedAt: "-P14D",          // If filtering by period
+     project: "Tech-BR",          // Tech-BR (Brazil) or Buyer (Mexico)
+     limit: 250,
+     fields: [...all necessary fields...]
+   })
+   ```
+
+3. **Extract critical information**:
+   - ID and title
+   - Description/Objective summary (1-2 sentences)
+   - Status (Backlog / Todo / In Progress / In Review / Done)
+   - Assignee (responsible person)
+   - Creation date
+   - Update date
+   - Completion date (if applicable)
+   - Blocker links (if applicable)
+   - Priority (if relevant)
+
+### 2. Structure Data
+
+Group into JSON structure:
+
+```json
+{
+  "team": "Brazil",
+  "project": "Tech-BR",
+  "sprint": "Sprint 1",
+  "period": "2026-09-01 to 2026-09-30",
+  "issues": [
+    {
+      "id": "BR-123",
+      "title": "Refactor authentication",
+      "description": "Migrate from OAuth1 to OAuth2",
+      "status": "In Progress",
+      "assignee": "João Silva",
+      "created": "2026-09-01",
+      "updated": "2026-09-10",
+      "completed": null,
+      "blockers": ["BR-120"],
+      "blocked_by": [],
+      "priority": "High"
+    }
+  ],
+  "summary": {
+    "total": 15,
+    "by_status": { "Backlog": 2, "Todo": 5, "In Progress": 6, "In Review": 1, "Done": 1 },
+    "by_assignee": { "João Silva": 5, "Maria Santos": 4, "Unassigned": 6 },
+    "blocked_count": 3,
+    "completion_rate": 6.67
+  }
+}
+```
+
+### 3. Calculate Metrics
+
+**For Chart A (Burndown + Distribution):**
+- Days since sprint start
+- Work remaining (non-Done)
+- Work completed (Done)
+- Ideal burndown (straight line 100% → 0%)
+- Distribution by status in %
+
+**For Chart B (People + Progress):**
+- Tasks per assignee
+- % completed per assignee
+- Overall % progress
+
+### 4. Qualitative Health Analysis
+
+Evaluate based on data:
+
+**Signs of "Good":**
+- >70% in Done
+- Few or no blocked tasks
+- Visible progress in recent days
+- Tasks distributed equitably
+- No overdue tasks
+
+**Signs of "At Risk":**
+- <70% in Done
+- Many blocked tasks (>3)
+- Slow or stalled progress
+- Bottlenecks identified (one person carrying everything)
+- Tasks in Progress for >5 days
+
+**Signs of "Blocked":**
+- <50% in Done
+- Many blocked tasks (>3)
+- Stalled tasks
+- Critical blockers identified
+
+**Signs of "Completed":**
+- 100% or very close to Done
+- Or end date already passed
+
+**Possible Conclusions:**
+1. "Sprint on track - Keep it up"
+2. "Sprint at risk - Immediate action needed"
+3. "Sprint blocked - Critical unblocking required"
+4. "Sprint completed successfully"
+5. "Sprint behind schedule with accumulated debt"
+
+### 5. Generate HTML with Charts
+
+Create HTML with:
+- **Executive header** (team, sprint, period, % completion)
+- **Table 1**: Consolidated issues (ID, Title, Status, Assignee, Days in Progress)
+- **Table 2**: Summary by Status
+- **Table 3**: Summary by Assignee
+- **Chart A1**: Burndown (line chart: days vs work)
+- **Chart A2**: Status Distribution (pie or bar chart)
+- **Chart B1**: Tasks by Person (bar chart)
+- **Chart B2**: Overall Progress (gauge or progress bar)
+- **Analysis Section**: Realistic paragraph about health
+- **Recommendation**: Suggested action based on data
+
+---
+
+## Health Analysis Criteria
+
+### 📈 Green (Sprint Going Well)
+```
+Conditions:
+- Completion rate > 70%
+- Blocked < 2 tasks
+- No task >5 days in Progress
+- Equitable distribution across team
+```
+
+Message template:
+```
+"Sprint {{SPRINT}} is on track. {{DONE_COUNT}}/{{TOTAL_COUNT}} tasks 
+completed ({{COMPLETION_RATE}}%). No critical blockers identified. 
+Team {{TEAM}} maintains consistent pace. Continue current trajectory."
+```
+
+---
+
+### 🟡 Yellow (Sprint At Risk)
+```
+Conditions:
+- 40% < Completion rate < 70%
+- 2-3 blocked tasks
+- Some tasks in Progress for >5 days
+- Workload imbalance on team
+```
+
+Message template:
+```
+"Sprint {{SPRINT}} at risk. Only {{COMPLETION_RATE}}% completed with 
+{{BLOCKED_COUNT}} blocked tasks. {{SLOW_TASKS}} overdue tasks in 
+Progress. {{PERSON}} carries {{OVERLOAD_PCT}}% of work while others have less. 
+Action needed in next 2 days."
+```
+
+---
+
+### 🔴 Red (Sprint Blocked)
+```
+Conditions:
+- Completion rate < 40%
+- > 3 blocked tasks
+- Many stalled tasks in Progress
+- Or severe bottlenecks
+```
+
+Message template:
+```
+"Sprint {{SPRINT}} blocked. Only {{COMPLETION_RATE}}% completion. 
+{{BLOCKED_COUNT}} blocked tasks impacting {{IMPACTED_TEAM}}. {{CRITICAL}} 
+critical blocker(s) need immediate resolution. Recommendation: stop and unblock today."
+```
+
+---
+
+### ✅ Completed (Sprint Done)
+```
+Conditions:
+- Completion rate = 100% or >95%
+- No blockers
+```
+
+Message template:
+```
+"Sprint {{SPRINT}} completed successfully. {{TOTAL_COUNT}} tasks done. 
+Team {{TEAM}} delivered {{ACHIEVEMENTS}}. Quality: {{QA_STATUS}}."
+```
+
+---
+
+## Action Recommendation
+
+Based on analysis, suggest **one concrete action**:
+
+**If Green:**
+- "Maintain pace. Next sprint can be more aggressive."
+- "Team in sync. Consider increasing task complexity."
+
+**If Yellow:**
+- "Identify top 2 blockers tomorrow and resolve."
+- "Rebalance workload from {{PERSON}} to {{OTHER_PERSON}}."
+- "{{BLOCKED_TASKS}} need urgent unblocking. Who can help?"
+
+**If Red:**
+- "⚠️ URGENT: Unblocking meeting today with {{STAKEHOLDERS}}."
+- "Sprint may not close. Consider moving {{TASK_COUNT}} tasks to next sprint."
+- "Bottleneck at {{BLOCKER}}: allocate {{RESOURCE}} to resolve."
+
+**If Completed:**
+- "Excellent work. Retrospective recommended to capture what went well."
+
+---
+
+## ⚠️ When NOT to Use This Skill
+
+This skill is **NOT appropriate** for:
+
+- **Detailed task management** — Use Linear directly for granular work
+- **Individual contributor reviews** — Not designed for performance evaluation
+- **Non-Linear projects** — Won't work with Jira, GitHub Issues, or other tools
+- **Real-time monitoring** — Best used for weekly/sprint-end reviews, not live dashboards
+- **Historical analysis** — Designed for current/active sprints, not closed cycles
+- **Cross-team comparisons** — Designed for single team reporting
+- **Financial/budget tracking** — Reporting is scope-focused, not cost-focused
+
+---
+
+## 📋 Practical Step-by-Step Examples
+
+### Example 1: Filter by Cycle (Specific Sprint)
+
+**User Input:**
+```
+Sprint Board Report Brazil Cycle:Sprint 1
+```
+
+**What You Do:**
+1. Parse: team=Brazil→Tech-BR, cycle="Sprint 1"
+2. Call: `Linear:list_issues({ cycle: "Sprint 1", team: "Tech-BR", limit: 250 })`
+3. Collect all issues from Sprint 1
+4. Calculate burndown/status/blockers
+5. Generate HTML + charts
+6. Deliver to user ready for board presentation
+
+---
+
+### Example 2: Filter by Period (Last N Days)
+
+**User Input:**
+```
+Sprint Board Report Mexico last 14 days
+```
+
+**What You Do:**
+1. Parse: team=Mexico→Buyer, period=-P14D
+2. Call: `Linear:list_issues({ updatedAt: "-P14D", team: "Buyer", limit: 250 })`
+3. Collect issues updated in last 14 days
+4. Calculate metrics
+5. Generate HTML + charts
+6. Deliver to user
+
+---
+
+### Example 3: Filter by Exact Date Range
+
+**User Input:**
+```
+Sprint Board Report Brazil 2026-09-01 to 2026-09-30
+```
+
+**What You Do:**
+1. Parse: team=Brazil→Tech-BR, startDate=2026-09-01, endDate=2026-09-30
+2. Call: `Linear:list_issues({ createdAt: "2026-09-01", updatedAt: "2026-09-30", team: "Tech-BR" })`
+3. Collect issues created/updated in this period
+4. Calculate metrics
+5. Generate HTML + charts
+6. Deliver to user
+
+---
+
+### Example 4: Filter by Cycle + Specific Project
+
+**User Input:**
+```
+Sprint Board Report Brazil Cycle:Sprint-1 Project:Negotiation Phase
+```
+
+**What You Do:**
+1. Parse: team=Brazil→Tech-BR, cycle="Sprint-1", project="Negotiation Phase"
+2. Call: `Linear:list_issues({ cycle: "Sprint-1", project: "Negotiation Phase", team: "Tech-BR" })`
+3. Collect only issues from Negotiation Phase sprint 1
+4. Calculate focused metrics
+5. Generate HTML + charts
+6. Deliver to user
+
+---
+
+## 🛠️ Filter Troubleshooting
+
+**Problem: "Cycle not found"**
+```
+Solution: List all available cycles from team:
+Linear:list_cycles({ teamId: "[team-id]" })
+Then confirm exact name with user.
+```
+
+**Problem: "No issues returned"**
+```
+Possible causes:
+1. Cycle exists but has no issues. Check status (active, ended?)
+2. Period too restrictive. Try expanding dates.
+3. Project is empty. Try without project filter.
+
+Solution: Progressive search (fewer filters → more issues)
+```
+
+**Problem: "Cycle returns issues from wrong team"**
+```
+Solution: Add team filter with cycle:
+Linear:list_issues({
+  cycle: "Sprint 1",
+  team: "Tech-BR"  // Add this
+})
+```
+
+**Problem: "ISO-8601 period not recognized"**
+```
+Expected format: "-P[N]D" (ex: "-P14D" = last 14 days)
+If user says "last 2 weeks":
+  2 weeks = 14 days → "-P14D"
+```
+
+---
+
+## 📈 Performance Notes
+
+**Runtime Expectations:**
+- **Linear API calls:** 2-5 calls per report (1 per project/filter combo)
+- **Data fetch time:** 2-5 seconds (depends on issue count)
+- **HTML generation:** <1 second
+- **Chart rendering:** <2 seconds
+- **Total time:** Typically 3-8 seconds
+
+**When to use:**
+- ✅ Weekly sprint reviews
+- ✅ End-of-sprint board presentations
+- ✅ Mid-sprint health checks (1-2 times per sprint)
+- ❌ NOT for real-time monitoring (too slow for live dashboards)
+- ❌ NOT for sub-minute updates
+
+---
+
+## ✅ Quality Checklist
+
+Before delivering the report, verify:
+
+- [ ] All data is correct (verified in Linear)
+- [ ] Tables have specified columns
+- [ ] 4 Charts load and display data
+- [ ] Analysis is realistic (not sugar-coated)
+- [ ] Recommendation is actionable
+- [ ] Blockers are highlighted (if any)
+- [ ] Workload distribution is visible
+- [ ] HTML is responsive (ready for projector)
+- [ ] Generated date/time are correct
+
+---
+
+## 🔧 Maintenance & Updates
+
+**Update this skill when:**
+- Team IDs change in your Linear workspace
+- New cycles are created or naming conventions change
+- Linear API changes or MCP breaks
+- Report template needs redesign
+- Analysis criteria need adjustment
+
+**Verify monthly:**
+- Team IDs are still accurate
+- Project mappings are still valid
+- Cycles still exist and are named correctly
+
+**Owner/Contact:** Document who maintains this skill
+
+**Deprecation triggers:**
+- If Linear MCP is replaced → migrate to new API
+- If reporting requirements change → update health criteria
+- If HTML becomes unsupported → switch to PDF/other format
+
+---
+
+## 📌 Quick Start: How to Use Cycles
+
+### If you're new to this, start here:
+
+**Step 1: Discover available cycles**
+```
+Ask: "What are the cycles/sprints in your team?"
+Or run: Linear:list_cycles to list automatically
+```
+
+**Step 2: Use a cycle in the filter**
+```
+Input: "Sprint Board Report Brazil Cycle:Sprint 1"
+           ↓
+Result: Report with ALL issues from Sprint 1
+```
+
+**Step 3: Customize if needed**
+```
+With project:   "... Cycle:Sprint 1 Project:Negotiation Phase"
+With status:    "... Cycle:Sprint 1 Status:In Progress"
+With period:    "... Cycle:Sprint 1 last 7 days"
+```
+
+### Valid Syntax (Copy & Paste):
+```
+# Basic - Specific sprint:
+Sprint Board Report Brazil Cycle:Sprint 1
+
+# With project:
+Sprint Board Report Brazil Cycle:Sprint 1 Project:Origination
+
+# With status:
+Sprint Board Report Mexico Cycle:Sprint 2 Status:Done
+
+# All filters:
+Sprint Board Report Brazil Cycle:Sprint 1 Project:AI Harness Status:In Progress
+```
+
+### Teams and Their Team IDs:
+```
+Brazil = Tech-BR
+  - teamId: [REDACTED_BRAZIL_ID]
+
+Mexico = Buyer
+  - teamId: [REDACTED_MEXICO_ID]
+```
+
+---
+
+## Important Notes
+
+1. **Tone is critical**: Directors need truth. If it's bad, say it's bad.
+2. **Data comes from Linear**: Always sync. Don't invent numbers.
+3. **HTML is self-explanatory**: No need for verbal presentation to understand.
+4. **Blockers save lives**: Always highlight. One blocked task stops 3 others.
+5. **Recommendations are actions**: Not generic. Must point to WHO, WHAT, and WHEN.
+
+---
+
+---
+
+## 📄 HTML Report Template
+
+*The template below is placed at the end to keep the documentation readable. Copy the entire block between the markers to use as your report template.*
+
+**START OF HTML TEMPLATE**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprint Report - {{TEAM}} - {{SPRINT}}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        header h1 { font-size: 28px; margin-bottom: 10px; }
+        header .meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        header .meta-item { display: flex; flex-direction: column; }
+        header .meta-item strong { font-size: 16px; margin-top: 5px; }
+        
+        .progress-banner {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .progress-card {
+            text-align: center;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            border-left: 4px solid #0066cc;
+        }
+        .progress-card.done { border-left-color: #28a745; }
+        .progress-card.warning { border-left-color: #ff9800; }
+        .progress-card.danger { border-left-color: #d32f2f; }
+        .progress-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #0066cc;
+            margin: 10px 0;
+        }
+        .progress-card.done .number { color: #28a745; }
+        .progress-card.warning .number { color: #ff9800; }
+        .progress-card.danger .number { color: #d32f2f; }
+        .progress-card .label { font-size: 12px; color: #666; text-transform: uppercase; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        @media (max-width: 1200px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        section h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0066cc;
+        }
+        section h3 {
+            font-size: 14px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        table th {
+            background: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        table tr:hover { background: #f9f9f9; }
+        table .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-done { background: #d4edda; color: #155724; }
+        .status-progress { background: #cfe2ff; color: #084298; }
+        .status-review { background: #fff3cd; color: #664d03; }
+        .status-todo { background: #e2e3e5; color: #383d41; }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .analysis {
+            background: #f0f7ff;
+            border-left: 4px solid #0066cc;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            line-height: 1.8;
+            font-size: 14px;
+        }
+
+        .recommendation {
+            background: #fff3cd;
+            border-left: 4px solid #ff9800;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            line-height: 1.8;
+            font-size: 14px;
+        }
+        .recommendation.danger {
+            background: #f8d7da;
+            border-left-color: #d32f2f;
+        }
+
+        .blockers-list {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .blockers-list ul { margin-left: 20px; margin-top: 10px; }
+        .blockers-list li { margin-bottom: 8px; color: #721c24; }
+
+        footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Sprint Board Report</h1>
+            <div class="meta">
+                <div class="meta-item">
+                    <span>Team</span>
+                    <strong>{{TEAM}}</strong>
+                </div>
+                <div class="meta-item">
+                    <span>Project</span>
+                    <strong>{{PROJECT}}</strong>
+                </div>
+                <div class="meta-item">
+                    <span>Sprint</span>
+                    <strong>{{SPRINT}}</strong>
+                </div>
+                <div class="meta-item">
+                    <span>Period</span>
+                    <strong>{{PERIOD}}</strong>
+                </div>
+            </div>
+        </header>
+
+        <div class="progress-banner">
+            <div class="progress-card {{COMPLETION_CLASS}}">
+                <div class="label">Complete</div>
+                <div class="number">{{COMPLETION_RATE}}%</div>
+                <div style="font-size: 12px;">{{DONE_COUNT}}/{{TOTAL_COUNT}}</div>
+            </div>
+            <div class="progress-card {{IN_PROGRESS_CLASS}}">
+                <div class="label">In Progress</div>
+                <div class="number">{{IN_PROGRESS_COUNT}}</div>
+                <div style="font-size: 12px;">{{IN_PROGRESS_PCT}}%</div>
+            </div>
+            <div class="progress-card {{BLOCKED_CLASS}}">
+                <div class="label">Blocked</div>
+                <div class="number">{{BLOCKED_COUNT}}</div>
+                <div style="font-size: 12px;">{{BLOCKED_PCT}}%</div>
+            </div>
+            <div class="progress-card">
+                <div class="label">Pending</div>
+                <div class="number">{{TODO_COUNT}}</div>
+                <div style="font-size: 12px;">{{TODO_PCT}}%</div>
+            </div>
+        </div>
+
+        {{#BLOCKERS}}
+        <div class="blockers-list">
+            <strong>⚠️ ALERT: {{BLOCKED_COUNT}} Blocked Tasks</strong>
+            <ul>
+                {{BLOCKERS_LIST}}
+            </ul>
+        </div>
+        {{/BLOCKERS}}
+
+        <section>
+            <h2>📋 Consolidated Issues</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Assignee</th>
+                        <th>Days Active</th>
+                        <th>Blockers</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ISSUES_ROWS}}
+                </tbody>
+            </table>
+
+            <h3>Summary by Status</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Count</th>
+                        <th>% of Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{STATUS_SUMMARY}}
+                </tbody>
+            </table>
+
+            <h3>Summary by Assignee</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Assignee</th>
+                        <th>Total</th>
+                        <th>Done</th>
+                        <th>In Progress</th>
+                        <th>To Do</th>
+                        <th>% Complete</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ASSIGNEE_SUMMARY}}
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>📈 Visualizations - Option A (Classic Scrum)</h2>
+            <div class="grid-2">
+                <div>
+                    <h3>Burndown - Work Remaining vs Days</h3>
+                    <div class="chart-container">
+                        <canvas id="burndownChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h3>Status Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>📈 Visualizations - Option B (Executive)</h2>
+            <div class="grid-2">
+                <div>
+                    <h3>Tasks by Assignee</h3>
+                    <div class="chart-container">
+                        <canvas id="assigneeChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h3>Overall Progress</h3>
+                    <div class="chart-container">
+                        <canvas id="progressChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>🔍 Qualitative Analysis</h2>
+            <div class="analysis">
+                <strong>Current Status:</strong><br>
+                {{HEALTH_ANALYSIS}}
+            </div>
+
+            <div class="recommendation {{RECOMMENDATION_CLASS}}">
+                <strong>Action Recommendation:</strong><br>
+                {{ACTION_RECOMMENDATION}}
+            </div>
+        </section>
+
+        <footer>
+            Generated {{GENERATED_DATE}} | Data synchronized from Linear | {{HEALTH_STATUS}}
+        </footer>
+    </div>
+
+    <script>
+        // Chart A1: Burndown
+        const burndownCtx = document.getElementById('burndownChart').getContext('2d');
+        new Chart(burndownCtx, {
+            type: 'line',
+            data: {
+                labels: {{BURNDOWN_LABELS}},
+                datasets: [
+                    {
+                        label: 'Work Remaining (Actual)',
+                        data: {{BURNDOWN_ACTUAL}},
+                        borderColor: '#d32f2f',
+                        backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Ideal Burndown',
+                        data: {{BURNDOWN_IDEAL}},
+                        borderColor: '#0066cc',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false
+                    }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top' } } }
+        });
+
+        // Chart A2: Status Distribution
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{STATUS_LABELS}},
+                datasets: [{ data: {{STATUS_DATA}}, backgroundColor: ['#28a745', '#cfe2ff', '#fff3cd', '#e2e3e5', '#d3d4d5'], borderColor: '#fff', borderWidth: 2 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'bottom' } } }
+        });
+
+        // Chart B1: Assignee
+        const assigneeCtx = document.getElementById('assigneeChart').getContext('2d');
+        new Chart(assigneeCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ASSIGNEE_LABELS}},
+                datasets: [{ label: 'Tasks', data: {{ASSIGNEE_DATA}}, backgroundColor: '#0066cc', borderRadius: 4 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+        });
+
+        // Chart B2: Progress
+        const progressCtx = document.getElementById('progressChart').getContext('2d');
+        new Chart(progressCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Complete', 'Remaining'],
+                datasets: [{ data: [{{COMPLETION_RATE}}, {{REMAINING_RATE}}], backgroundColor: ['#28a745', '#e2e3e5'], borderColor: '#fff', borderWidth: 3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'bottom' } } }
+        });
+    </script>
+</body>
+</html>
+```
+
+**END OF HTML TEMPLATE**
+
+---
+
+## 📞 Support & Questions
+
+For issues with:
+- **Linear MCP integration** — Check Linear API access and team IDs
+- **Cycle filtering** — Run `Linear:list_cycles()` to verify available cycles
+- **Data accuracy** — Verify Linear is the source of truth
+- **HTML rendering** — Ensure browser supports Chart.js library
+- **Report customization** — Edit template section at end of skill file
+
+</version2>
+
+
+<usage>
+<question>
+create a Brazil report over the cycle 1
+</question>
+<response>
+Read a file, created a file, and 2 more tools
+✅ Brazil Cycle 1 Report - Complete & Ready
+I've created a comprehensive executive report for Brazil Cycle 1 using the improved skill's template and real data from Linear.
+
+📊 Report Overview
+File: brazil-cycle1-report.html
+
+What's Included:
+
+1. Executive Header
+Team: Brazil (Tech-BR)
+Cycle: Cycle 1 (Sep 14-28, 2026)
+Status: BLOCKED / UNSUSTAINABLE
+2. Progress Banner
+✅ 0% Complete (0 of 27 tasks)
+✅ 7% In Progress (2 tasks: BR-252, BR-251)
+✅ 93% Not Started (25 tasks)
+✅ Single Owner (Santiago Godoy @ 100%)
+3. Critical Alert Section 🚨
+Highlights:
+
+Santiago is the SOLE assignee for all 27 tasks
+25 tasks untouched (93%)
+10 business days = need 2.7 tasks/day (impossible)
+Zero additional resources allocated
+Realistic: 1-1.5 tasks/day = 40-50% completion max
+4. Detailed Tables
+Status Summary — To-Do (25), In Progress (2), Done (0)
+Workload by Assignee — Santiago 27/27 (100%)
+Featured Issues — BR-252, BR-251, BR-162, BR-196
+Major Project Areas — 6 project categories with details
+5. 4 Interactive Charts 📈
+Burndown Chart (Ideal vs Realistic)
+Status Distribution (93% To-Do visualization)
+Workload Concentration (100% Santiago)
+Progress Status (Overall cycle health)
+6. Qualitative Analysis 🔍
+Realistic assessment:
+
+Cycle is mathematically IMPOSSIBLE with current setup
+27 tasks = 81-135 days of work (estimated 3-5 days each)
+10 days available = structural planning failure
+Velocity tracking will be meaningless
+Debt accumulates for Cycle 2
+7. Executive Recommendation 💥
+Three Options (Choose ONE):
+
+Option A — PRIORIZE & MOVE (Recommended)
+
+Identify 10-12 P0 critical tasks
+Move 15+ to Cycle 2
+With 1 person + help = 70-80% success
+Option B — ALLOCATE RESOURCES
+
+Add 1 full-time person OR
+2-3 people at 50% each
+Only way to keep all 27 without chaos
+Option C — EXTEND CYCLE
+
+From 10 to 20 days (4 weeks)
+Santiago completes 14-20 tasks
+Reduces debt significantly
+Timeline:
+
+TODAY (Sep 10): Executives decide
+TOMORROW (Sep 11): Communicate to Santiago
+MONDAY (Sep 14): Cycle starts with clarity
+</response>
+</usage>

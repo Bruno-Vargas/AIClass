@@ -1,0 +1,91 @@
+📊 ANÁLISE EXECUTIVA - SPRINT BACKEND
+Time de Desenvolvimento A | Período: Set/2025 - Jul/2026
+1. KPIs PRINCIPAIS
+
+Métrica
+Resultado
+Status
+Contexto
+Tarefas Concluídas
+48
+✅
+De 85 totais (81% conclusão)
+Tempo Realizado
+769h
+✅
+Dentro do planejado
+Desvio Médio
++5.7%
+✅
+Conservador (bom para planejamento)
+Taxa Conclusão Média
+81%
+✅
+Acima da indústria (70%)
+
+
+2. RANKING DE DESEMPENHO (Score 0-100)
+
+Pos
+Analista
+Score
+Desvio %
+Conclusão
+Papel
+🥇
+Bob
+95.4
+0.0%
+77.8%
+Tech Lead
+🥈
+Carlos
+89.8
+-4.2%
+66.7%
+DRI Pagamentos
+🥉
+Alice
+89.1
++11.4%
+90.9%
+DRI Segurança
+4º
+Diana
+88.9
++10.5%
+90.0%
+DRI DevOps
+5º
+Eduardo
+88.2
+-17.1%
+66.7%
+Mentoria
+
+
+3. INSIGHTS CRÍTICOS
+✅ Bob é o melhor performer (95.4/100)
+Melhor previsibilidade (0% desvio) + velocidade (9.3h/tarefa) + especialista BD. AÇÃO: Promover Tech Lead para mentoria.
+✅ Alice e Diana com 90%+ de conclusão
+Alta confiabilidade em Segurança e DevOps. AÇÃO: DRI de suas épicas.
+⚠️ Alice superestima (+11.4%)
+Executa mais rápido que estima. AÇÃO: Aplicar fator 0.9x nas próximas estimativas.
+🚨 Eduardo subestima (-17.1%)
+Leva 17% mais tempo. AÇÃO: Mentoria semanal + fator 1.25x nas estimativas.
+🚨 Carlos e Eduardo com 66.7% de conclusão (baixo)
+Muitas tarefas "A Fazer". AÇÃO: Daily standup + 2x weekly sync. Mapear bloqueadores.
+4. PLANO DE AÇÃO (30 DIAS)
+1. Promover Bob a Tech Lead de Estimativas
+   • Dedicar 2h/semana para mentoria com Eduardo e Carlos   • Documentar matriz de complexidade por tipo de tarefa
+2. Sprint Planning 2.0 com Checkpoints
+   • Day-1: Estimativa bottom-up com Bob   • Day-3: Checkpoint de progresso   • Aplicar fatores: Alice (0.9x) | Eduardo (1.25x)
+3. Resolver Bloqueadores (2 semanas)
+   • Daily standup + 2x weekly sync com Carlos/Eduardo   • Mapear dependências, requisitos, gargalos técnicos
+4. Squad Model com DRI
+   • Segurança (Alice) | BD (Bob) | DevOps (Diana) | Pagamentos (Carlos) | Funcionalidades (Eduardo + mentoria)
+5. CONCLUSÃO
+✅ Time com bom potencial. 81% de conclusão (acima indústria 70%). Desvio conservador +5.7%. Bob é top performer. Alice/Diana com alta confiabilidade. Carlos/Eduardo precisam suporte para bloqueadores.
+Foco estratégico (90 dias):
+1. Mentoria de Bob em estimativas2. Resolver bloqueadores em Pagamentos/Funcionalidades3. Squad model com DRI claro4. Aumentar conclusão para 80%+ (Carlos/Eduardo)5. Checkpoints cedo em tarefas complexas
+Análise: Set/2025 - Jul/2026 | Próxima revisão: Out/2026

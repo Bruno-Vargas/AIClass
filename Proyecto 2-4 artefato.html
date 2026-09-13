@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Executivo - Sprint Backend Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 16px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            border-left: 5px solid;
+        }
+
+        .metric-card.success { border-left-color: #48bb78; }
+        .metric-card.warning { border-left-color: #ed8936; }
+        .metric-card.danger { border-left-color: #f56565; }
+        .metric-card.info { border-left-color: #4299e1; }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            color: #718096;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            min-height: 450px;
+        }
+
+        .chart-title {
+            color: #2d3748;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 350px;
+        }
+
+        .insights-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            margin-bottom: 30px;
+        }
+
+        .insights-title {
+            color: #2d3748;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .insight-item {
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+            background: #f7fafc;
+        }
+
+        .insight-item.positive { border-left-color: #48bb78; }
+        .insight-item.warning { border-left-color: #ed8936; }
+        .insight-item.critical { border-left-color: #f56565; }
+
+        .insight-label {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .insight-text {
+            color: #4a5568;
+            font-size: 14px;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Dashboard Executivo - Sprint Backend</h1>
+            <p>Análise de Desempenho e Eficiência do Time de Desenvolvimento A | Período: Set/2025 - Jul/2026</p>
+        </div>
+
+        <!-- KPIs principais -->
+        <div class="metrics-grid">
+            <div class="metric-card success">
+                <div style="font-size: 24px; margin-bottom: 10px;">✅</div>
+                <div class="metric-value">48</div>
+                <div class="metric-label">Tarefas Concluídas</div>
+            </div>
+            <div class="metric-card info">
+                <div style="font-size: 24px; margin-bottom: 10px;">⏱️</div>
+                <div class="metric-value">769h</div>
+                <div class="metric-label">Tempo Total Realizado</div>
+            </div>
+            <div class="metric-card warning">
+                <div style="font-size: 24px; margin-bottom: 10px;">📈</div>
+                <div class="metric-value">+5.7%</div>
+                <div class="metric-label">Desvio Médio do Time</div>
+            </div>
+            <div class="metric-card success">
+                <div style="font-size: 24px; margin-bottom: 10px;">🎯</div>
+                <div class="metric-value">81%</div>
+                <div class="metric-label">Taxa Média de Conclusão</div>
+            </div>
+        </div>
+
+        <!-- Gráficos principais -->
+        <div class="charts-grid">
+            <!-- Gráfico 1: Desvio por Analista -->
+            <div class="chart-container">
+                <div class="chart-title">📊 Acurácia de Estimativas por Analista</div>
+                <div class="chart-wrapper">
+                    <canvas id="chart1"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 2: Tempo Estimado vs Real -->
+            <div class="chart-container">
+                <div class="chart-title">⚖️ Estimado vs Realizado (Total)</div>
+                <div class="chart-wrapper">
+                    <canvas id="chart2"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 3: Score de Desempenho -->
+            <div class="chart-container">
+                <div class="chart-title">🏆 Ranking de Desempenho do Time</div>
+                <div class="chart-wrapper">
+                    <canvas id="chart3"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 4: Taxa de Conclusão -->
+            <div class="chart-container">
+                <div class="chart-title">📋 Taxa de Conclusão por Analista</div>
+                <div class="chart-wrapper">
+                    <canvas id="chart4"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 5: Distribuição de Tarefas -->
+            <div class="chart-container">
+                <div class="chart-title">👥 Distribuição de Tarefas</div>
+                <div class="chart-wrapper">
+                    <canvas id="chart5"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 6: Velocidade por Analista -->
+            <div class="chart-container">
+                <div class="chart-title">⚡ Velocidade Média (h/tarefa)</div>
+                <div class="chart-wrapper">
+                    <canvas id="chart6"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insights e Recomendações -->
+        <div class="insights-section">
+            <div class="insights-title">💡 Key Insights & Recomendações Estratégicas</div>
+
+            <div class="insight-item positive">
+                <div class="insight-label">✅ BOB é o melhor performer do time (95.4/100)</div>
+                <div class="insight-text">Score: 95.4/100 | Maior previsibilidade nas estimativas (desvio equilibrado: 0%), melhor velocidade (9.3h/tarefa), especialista em Banco de Dados. RECOMENDAÇÃO: Promover como tech lead de infraestrutura e mentor para alinhamento de estimativas.</div>
+            </div>
+
+            <div class="insight-item positive">
+                <div class="insight-label">✅ ALICE e DIANA têm taxas de conclusão excelentes</div>
+                <div class="insight-text">Alice: 90.9% | Diana: 90.0% - Maior confiabilidade nas entregas. RECOMENDAÇÃO: Atribuir tarefas críticas de especialização (Segurança e DevOps respectivamente).</div>
+            </div>
+
+            <div class="insight-item warning">
+                <div class="insight-label">⚠️ ALICE superestima sistematicamente (+11.4%)</div>
+                <div class="insight-text">Executa mais rápido que estima. Enquanto é positivo para velocidade, distorce o planejamento. RECOMENDAÇÃO: Acompanhamento próximo em estimativas, aplicar fator de correção (0.9x) em futuros levantamentos.</div>
+            </div>
+
+            <div class="insight-item warning">
+                <div class="insight-label">⚠️ EDUARDO subestima drasticamente (-17.1%)</div>
+                <div class="insight-text">Leva 17% mais tempo do que estima. Tarefas de Funcionalidades têm complexidade subestimada. RECOMENDAÇÃO: Revisão de escopo pré-sprint, aplicar fator de segurança (1.25x) nas estimativas, mentoria em técnicas de decomposição de tarefas.</div>
+            </div>
+
+            <div class="insight-item critical">
+                <div class="insight-label">🚨 CARLOS e EDUARDO apresentam taxa de conclusão baixa (66.7%)</div>
+                <div class="insight-text">Tarefas frequentemente em status "A Fazer" ou "Não Concluído". RECOMENDAÇÃO: Avaliar se há bloqueadores crônicos, revisar complexidade das tarefas atribuídas, aumentar frequência de standups para essas áreas (Pagamentos e Funcionalidades).</div>
+            </div>
+
+            <div class="insight-item warning">
+                <div class="insight-label">📊 Desvios anômalos detectados (9 outliers)</div>
+                <div class="insight-text">Tarefas como "Autenticação em dois fatores" (Alice: +25%), "Particionamento de tabelas" (Bob: -50%) e "Exportar relatórios em PDF" (Eduardo: -100%, não concluída) indicam possíveis problemas de escopo ou bloqueadores não capturados. RECOMENDAÇÃO: Implementar checkpoint de checkpoint em day-3 de cada tarefa complexa.</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Análise de Dados da Sprint Backend - Time de Desenvolvimento A | Gerada em Setembro 2026</p>
+        </div>
+    </div>
+
+    <script>
+        // Esperar Chart.js carregar
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js não carregou!');
+        } else {
+            console.log('Chart.js carregado com sucesso');
+        }
+
+        // Dados
+        const analistas = ['Alice', 'Bob', 'Carlos', 'Diana', 'Eduardo'];
+        const cores = ['#667eea', '#48bb78', '#ed8936', '#f6ad55', '#9f7aea'];
+
+        // 1. Acurácia (Desvio %)
+        new Chart(document.getElementById('chart1'), {
+            type: 'bar',
+            data: {
+                labels: analistas,
+                datasets: [{
+                    label: 'Desvio Médio (%)',
+                    data: [11.36, 0.00, -4.17, 10.50, -17.13],
+                    backgroundColor: cores,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => v + '%' }
+                    }
+                }
+            }
+        });
+
+        // 2. Estimado vs Real
+        new Chart(document.getElementById('chart2'), {
+            type: 'bar',
+            data: {
+                labels: analistas,
+                datasets: [
+                    {
+                        label: 'Estimado (h)',
+                        data: [102, 90, 140, 96, 148],
+                        backgroundColor: '#cbd5e0',
+                    },
+                    {
+                        label: 'Realizado (h)',
+                        data: [116, 84, 133, 110, 127],
+                        backgroundColor: cores,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // 3. Ranking (Horizontal Bar)
+        new Chart(document.getElementById('chart3'), {
+            type: 'bar',
+            data: {
+                labels: ['Bob', 'Carlos', 'Alice', 'Diana', 'Eduardo'],
+                datasets: [{
+                    label: 'Score Final',
+                    data: [95.4, 89.8, 89.1, 88.9, 88.2],
+                    backgroundColor: ['#48bb78', '#ed8936', '#667eea', '#f6ad55', '#9f7aea'],
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { min: 85, max: 100 } }
+            }
+        });
+
+        // 4. Taxa de Conclusão (Doughnut)
+        new Chart(document.getElementById('chart4'), {
+            type: 'doughnut',
+            data: {
+                labels: analistas,
+                datasets: [{
+                    data: [90.9, 77.8, 66.7, 90.0, 66.7],
+                    backgroundColor: cores
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: { callbacks: { label: c => c.parsed + '%' } }
+                }
+            }
+        });
+
+        // 5. Distribuição (Pie)
+        new Chart(document.getElementById('chart5'), {
+            type: 'pie',
+            data: {
+                labels: analistas,
+                datasets: [{
+                    data: [11, 9, 9, 10, 9],
+                    backgroundColor: cores
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        // 6. Velocidade (Bar)
+        new Chart(document.getElementById('chart6'), {
+            type: 'bar',
+            data: {
+                labels: analistas,
+                datasets: [{
+                    label: 'Horas/Tarefa',
+                    data: [10.55, 9.33, 14.78, 11.00, 14.11],
+                    backgroundColor: cores,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    </script>
+</body>
+</html>

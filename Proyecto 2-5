@@ -1,0 +1,14 @@
+Input
+Use o MCP do linear e me mostra um resumo em texto em ingles da quantidade de tarefas que foram feitas ou seguem sendo feitas no projeto Tech-BR por pessoa e projeto
+
+
+Output
+Created a file · 1 note
+
+Done! I've created a comprehensive English-language summary of the Tech-BR project tasks, including:
+
+✅ Task count by person: Santiago (31), Bruno (34), Felipe (12), Guilherme (10), Tomas (9)
+✅ Breakdown by status: 44 done, 37 active, 135 to-do, 55 backlog, 18 canceled
+✅ Functional areas: Origination, documents, RBAC, orchestration, contracts, payments, delivery
+✅ Completion rates: Guilherme 60%, Santiago 42%, Bruno 35%, Felipe 17%, Tomas 11%
+✅ Capacity metrics: 37 items in flight, key blockers, sprint recommendations

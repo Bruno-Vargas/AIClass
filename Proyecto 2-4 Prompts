@@ -1,0 +1,50 @@
+
+Papel: Você é um(a) Analista de Dados Sênior especialista em produtividade de equipes de desenvolvimento de software e metodologias ágeis.
+
+Contexto: Estou fornecendo um arquivo CSV com o histórico de execução de tarefas de sprints passadas e corrente do Time de Desenvolvimento A. Este material servirá de base para uma apresentação executiva para a diretoria da empresa.
+
+Objetivo Principal: Realizar uma análise profunda dos dados, gerar métricas de eficiência e preparar o conteúdo para um One-Pager Executivo e um Artefato Visual a serem apresentados à diretoria.
+
+Análises Obrigatórias:
+
+Acurácia de Estimativas e Alinhamento da Equipe:
+
+Quais analistas apresentam as maiores divergências entre o tempo estimado e o tempo real executado?
+
+Há tendência generalizada do time em subestimar ou superestimar tarefas, ou os desvios são pontuais por membro?
+
+O nível de alinhamento e precisão das estimativas entre os analistas é homogêneo ou discrepante?
+
+Matriz de Especialização e Recomendação por Tipo de Tarefa:
+
+Com base no tempo de execução e na taxa de conclusão (status final), qual analista possui melhor desempenho para cada tipo de tarefa (ex: Bug, Feature, Refatoração, DB, Integration)?
+
+Quem é a pessoa mais recomendada para assumir cada demanda em futuras sprints?
+
+Detecção de Outliers e Anomalias:
+
+Quais tarefas fugiram drasticamente da média de tempo ou esforço esperado (pontos fora da curva)?
+
+Quais motivos ou padrões explicam esses desvios (ex: gargalos em code review, bloqueios, falhas de escopo)?
+
+Burndown Chart das Sprints (Ciclos de 2 semanas):
+
+Considerando sprints de 10 dias úteis (2 semanas), estruture a evolução diária do trabalho a fazer (work remaining) versus trabalho concluído (work done).
+
+Identifique se o ritmo do time é constante ao longo da sprint ou se há acúmulo de entregas no final do ciclo.
+
+Avaliação de Desempenho e Melhores Práticas:
+
+Destaque os analistas com melhor equilíbrio entre velocidade, previsibilidade de entrega e taxa de sucesso nas tarefas.
+
+Entregáveis Solicitados:
+
+Me monte um Dashboard com os gráficos e resumo 
+
+Conteúdo para One-Pager Executivo: Resumo analítico direto em linguagem adequada para diretores (principais conquistas, riscos identificados e plano de ação).
+
+Tabelas e Indicadores Chave (KPIs): Tabelas sintéticas de acurácia, taxa de entrega e matriz de recomendação.
+
+Estrutura dos Gráficos: Dados organizados em tabela dia a dia para alimentar o Burndown Chart da sprint.
+
+

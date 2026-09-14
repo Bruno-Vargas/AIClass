@@ -1,0 +1,23 @@
+**Escenario 1: Parece inseguro, pero sí está bien**
+--> trabajar con workspace local de de claude una base de datos con las trasacciones de compravent de autos del ultimo año que incluye: marca, modelo, año, precio de compra, precio de venta, ganancia y información geográfica de la sucursal para tener insights de negocio.
+La analise para tomar decisión si se puede o no hacerlo, 
+1 Donde se va a trabajar el dato, local, es decir no vamos a pegar los documentos en chat, hace que no salgan de su computadora. :OK 
+2 No hay datos PII en el listado, con eso mismo que localmente, no estamos trabajando con datos de los clientes . 
+---
+
+**Escenario 2: Parece seguro, pero no lo está**
+
+--> Un analista de CRM quiere redactar un correo de seguimiento personalizado para los clientes. Para darle contexto a Claude, pega el siguiente texto directo del sistema: *"Redacta un correo para Juan Pérez, quien nos vendió un Honda Civic 2018 el martes. Ofrécele un 5% de descuento en su próxima compra y mencionale que sabemos que vive en la zona norte de la ciudad y que su auto tenía un detalle en la pintura que ya arreglamos."*
+La analise para tomar decisión si se puede o no hacerlo, 
+Es natural y facil pedir a claude que se redacte el correo, pero a momento de usar los datos reales del cliente no se puede pegar en directo a Claude, hay que usar datos ofuscados. 
+Eso no esta bien porque hay datos PII
+
+
+---
+
+**Escenario 3: Genuinamente gris**
+El equipo de CRM quiere usar Claude para armar los contratos de manera automatizada, o validarlo. 
+procesar los datos PII de los users para validar los contratos con OCR tienen que ser validado con el equipo de compliance y mi sugerencia es que se valide a través de un hash los datos, sin usar los datos de una
+igual a momento de armar el contrato, se necesita los datos personales para el contrato final, y eso se lo puede hacer solo en el servicio que tiene autorización para eso, en Claude usar tags para que el servicio lo reemplaze
+
+Resumen, la manera que se hace el proceso afecta si se puede o no usar. 

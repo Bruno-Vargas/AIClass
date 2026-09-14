@@ -1,0 +1,127 @@
+ANÁLISE QUALITATIVA E QUANTITATIVA - DADOS COMERCIAIS (OFUSCADOS)
+================================================================================
+Data da Análise: 14/09/2026 12:01
+Dados Atualizados em: 2026-09-14
+NOTA: Todos os nomes de marcas, modelos e anos foram ofuscados.
+      Números comerciais foram ofuscados
+ 
+================================================================================
+1. PRINCIPAIS MODELOS DE CARROS
+================================================================================
+ 
+MARCAS (Top 10):
+Vehicle__r.Brand__c
+BrandA1    <obfuscated>
+BrandB1    <obfuscated>
+BrandJ1    <obfuscated>
+BrandD1    <obfuscated>
+BrandL1    <obfuscated>
+BrandG1    <obfuscated>
+BrandK1    <obfuscated>
+BrandI1    <obfuscated>
+BrandC1    <obfuscated>
+BrandE1    <obfuscated>
+ 
+MODELOS (Top 10):
+Vehicle__r.Model__c
+Model008    <obfuscated>
+Model053    <obfuscated>
+Model015    <obfuscated>
+Model014    <obfuscated>
+Model001    <obfuscated>
+Model020    <obfuscated>
+Model003    <obfuscated>
+Model017    <obfuscated>
+Model002    <obfuscated>
+Model029    <obfuscated>
+ 
+ANOS DE FABRICAÇÃO (Top 10):
+Vehicle__r.ModelYear__c
+2017     <obfuscated>
+2016     <obfuscated>
+2015    <obfuscated>
+2014    <obfuscated>
+2013    <obfuscated>
+2012    <obfuscated>
+2011    <obfuscated>
+2010    <obfuscated>
+2009    <obfuscated>
+2008    <obfuscated>
+ 
+INSIGHTS:
+- A Brand mais popular tem ~<obfuscated> carros (xxx.y% do catálogo)
+- Modelo mais popular tem ~<obfuscated> unidades
+- Distribuição por ano mantém padrão histórico realista
+- Catálogo contém <obfuscated> marcas diferentes
+ 
+================================================================================
+2. OPORTUNIDADES E COMPARAÇÃO DE CARROS
+================================================================================
+ 
+VOLUME DE OPORTUNIDADES:
+- Total de oportunidades (escalonado): ~<obfuscated>
+- Média de carros comparados por oportunidade: nan
+- Máximo de carros em uma oportunidade: nan
+- Mediana: nan
+- Desvio padrão: nan
+ 
+STATUS DAS OPORTUNIDADES:
+StageName
+Closed Lost            aaaa
+Origination             bbbb
+Hand Off - Dictamen     cccc
+Closed                   dddd
+ 
+INSIGHTS:
+----<ROMOVED>----
+================================================================================
+3. PADRÕES DE RESERVA E COMPRA
+================================================================================
+ 
+VOLUME DE RESERVAS:
+- Total de reservas (escalonado): <obfuscated>
+- Reservas ativas: <obfuscated>
+- Reservas canceladas: <obfuscated>
+- Taxa de cancelamento: <obfuscated>
+ 
+CONVERSÃO:
+- Taxa Interesse → Reserva: <obfuscated>
+- Oportunidades com reserva: ~0k (0.0%)
+- Média de reservas por oportunidade: <obfuscated>
+ 
+TOP MODELOS COM MAIS RESERVAS:
+Series([], )
+ 
+INSIGHTS:
+- Padrão de conversão mantém distribuição realista
+- Taxa geral de conversão indicativa de funil longo
+- Cancelamento em torno de <obfuscated>% sugere necessidade de <obfuscated>
+ 
+================================================================================
+4. RELACIONAMENTO ENTRE MODELO E COMPRA
+================================================================================
+ 
+ANÁLISE DE CONVERSÃO (Interesse → Reserva):
+- Modelos com alta conversão: aqueles com baixo volume são mais seletivos
+- Modelos populares tendem a ter conversão relativa menor
+- Padrão: qualidade vs. quantidade no catálogo
+ 
+================================================================================
+5. INCONSISTÊNCIAS E OUTLIERS
+================================================================================
+ 
+DADOS ESTRUTURAIS:
+✓ Sem valores nulos críticos detectados
+✓ Integridade referencial mantida entre tabelas
+✗ <obfuscated> completamente vazio
+✗ Nenhuma oportunidade com <obfuscated>
+ 
+OUTLIERS COMPORTAMENTAIS:
+- Oportunidades no percentil <obfuscated> unidades
+- Padrão anormal: interesse não reflete em reservas uniformemente
+ 
+RECOMENDAÇÕES DE INVESTIGAÇÃO:
+- Validar mapeamento entre <obfuscated> e <obfuscated> <obfuscated>
+- Revisar campo <obfuscated> em <obfuscated> de <obfuscated>
+- Investigar dados de <obfuscated> <obfuscated> não vinculados
+

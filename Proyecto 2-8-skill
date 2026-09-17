@@ -1,0 +1,102 @@
+---
+name: "kavak-oficina"
+description: "Rutina diaria de Kavak Oficina: recorre las tareas abiertas una por una, registra el nuevo estado, agrega tareas nuevas, recalcula KPIs y republica el reporte semanal. Usar con /kavak-oficina, \"rutina de kavak\", \"actualizar tareas\", \"rutina diaria\"."
+---
+
+# Rutina diaria — Kavak Oficina
+
+Tablero de Tareas de Bruno. La fuente de verdad es `data.json`; el reporte
+publicado se regenera desde ahí. Ninguna cifra se escribe a mano.
+
+## Ubicar el proyecto
+
+Buscá la carpeta del proyecto: es la carpeta conectada que contiene `data.json`
+junto a `generar_reporte.py` y `kavak-tokens.css`. Todos los scripts se corren
+desde ahí. Si no hay ninguna carpeta conectada con esos archivos, decilo y pedí
+que conecten la carpeta de Kavak Oficina antes de seguir.
+
+## Forma de `data.json`
+
+```json
+{
+  "lastUpdated": "ISO8601",
+  "tasks": [
+    {"id":"task_xxxxxxxx","asignee":"Nombre","description":"...",
+     "status":"done|in_progress|blocked","priority":"low|medium|high|critical",
+     "createdDate":"ISO8601","closedDate":"ISO8601 o null"}
+  ],
+  "kpisGenerales": {...},
+  "kpisAgentes": [...]
+}
+```
+
+Tarea **abierta** = `in_progress` o `blocked`. Las dos cuentan y las dos se
+preguntan.
+
+## Flujo — seguilo en este orden
+
+**1. Mostrar el estado de entrada.** Leé `data.json` y arrancá con un bloque
+corto: total de tareas, completadas con su porcentaje, en progreso, bloqueadas y
+el ratio de creación sobre ejecución.
+
+**2. Preguntar tarea abierta por tarea abierta.** Una sola tarea por mensaje.
+Nunca ofrezcas un menú de opciones y nunca preguntes "¿qué querés hacer?".
+Para cada tarea mostrá descripción, responsable, prioridad y desde cuándo está
+abierta, y pedí el nuevo estado. Numerá el avance ("Tarea 2 de 4").
+
+Interpretación de la respuesta: *completada / done / listo / hecho* → `done`;
+*bloqueada / blocked / trabada* → `blocked`; *en progreso / arrancó / sigue
+trabajándose* → `in_progress`; *sin cambios / igual / nada* → no tocar.
+
+Si la respuesta es ambigua, preguntá una sola línea de aclaración antes de
+guardar. Ojo con "sigue" sobre una tarea bloqueada: puede ser "sigue bloqueada"
+o "se desbloqueó". Preguntá.
+
+**3. Guardar cada respuesta al instante**, antes de pasar a la siguiente tarea:
+
+```
+python3 set_status.py <task_id> <done|in_progress|blocked>
+```
+
+No acumules cambios en la conversación para guardarlos al final: si la sesión se
+corta, se pierden. `set_status.py` sella `closedDate` cuando el estado es `done`.
+
+**4. Pedir las tareas nuevas** recién cuando terminaste con todas las abiertas.
+Formato `Asignado | Descripción | prioridad`, aceptá varias juntas y también
+separadas por coma. Si no hay ninguna, seguí de largo.
+
+```
+python3 add_task.py "Jose|Cargar documentos|low" "Team A|Testear mobile|medium"
+```
+
+Las nuevas entran como `in_progress`.
+
+**5. Recalcular y regenerar:**
+
+```
+python3 actualizar_tareas.py      # KPIs + resumen_critico.txt
+python3 generar_reporte.py        # reporte-semanal.html desde la plantilla
+```
+
+Los dos scripts fallan fuerte si algo no cuadra. Si alguno imprime ERROR, pará y
+decí qué pasó — no republiques un reporte viejo.
+
+**6. Republicar el reporte** sobre su URL existente, para que el link público no
+cambie. La URL está en el README de la carpeta del proyecto. Pasá esa URL como
+`url` al publicar, junto con el archivo `reporte-semanal.html`.
+
+**7. Cerrar con dos o tres frases**, en prosa: qué se movió, qué quedó
+bloqueado y qué conviene mirar. Sin listas largas ni recap de cada paso.
+
+## Tono
+
+Amigable y directo, en español rioplatense, sin jerga técnica. Nada de menús ni
+de "¿en qué te puedo ayudar?". Si algo salió mal, decilo derecho.
+
+## Trampa conocida
+
+`reporte-template.html` tiene que contener `/**DATA_PLACEHOLDER**/`. Si lo
+pierde, el generador corta con error en vez de copiar la plantilla con datos
+viejos — que es exactamente el bug que tuvo este proyecto durante días. Si ves
+ese error, restaurá el placeholder en el lugar donde va `const data = {...};`
+dentro del `<script>`.

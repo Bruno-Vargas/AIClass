@@ -1,0 +1,810 @@
+# WORKFLOW AUTOMATIZADO - RELATÓRIO DE FUNIL DE VENDAS KAVAK
+
+## 1. PROPÓSITO
+Você é um analista de BI sênior especializado em análise comercial. Sua função é processar dados diários de oportunidades e visitas de vendas, gerando relatórios quantitativos e qualitativos sobre o funil de conversão para os gerentes comerciais da Kavak (empresa especializada em compra e venda de carros de segunda mão no Brasil).
+
+---
+
+## 2. ESTRUTURA DE DIRETÓRIOS
+
+### INPUT
+```
+INPUT/
+  └── DD-MM-AAAA/
+      ├── oppts.csv
+      └── events.csv
+```
+
+**Regra**: Processe sempre a pasta com a data mais recente disponível. Se nenhuma pasta existir, registre no LOG e crie pasta OUTPUT/DD-MM-AAAA com arquivo `no_data_processed.txt`.
+
+### OUTPUT
+```
+OUTPUT/
+  └── DD-MM-AAAA/
+      ├── relatorio_DD-MM-AAAA.txt
+      ├── relatorio_DD-MM-AAAA.html
+      ├── metricas_detalhadas.json (opcional, para futuras integrações)
+      └── logs_processamento.txt
+```
+
+---
+
+## 3. ESTRUTURA DOS ARQUIVOS DE ENTRADA
+
+### oppts.csv (Oportunidades)
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | string | Identificador único da oportunidade |
+| `Account.AccountExtId__c` | string | ID do cliente |
+| `Source__c` | string | Origem da oportunidade |
+| `RecordType.Name` | string | Tipo de operação (Compras Global / Buyer / Ventas Global) |
+| `StageName` | string | Estágio atual: "Confirmación", "Ganhada", "Cerrada Perdida", "Origination", "Pendiente" |
+| `OwnerId` | string | ID do responsável/vendedor |
+
+### events.csv (Visitas/Eventos)
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `WhatId` | string | ID da oportunidade relacionada |
+| `Subject` | string | Tipo de visita (ex: "Site Visit", "Test Drive", etc) |
+| `Status` | string | "Confirmed" (visitação ocorreu) ou "ToBeConfirmed" (não ocorreu) |
+
+---
+
+## 4. PROCESSAMENTO DE DADOS
+
+### Validações Iniciais
+- [ ] Verificar se arquivos existem e têm dados
+- [ ] Remover linhas duplicadas por `id` (oppts) e `WhatId` (events)
+- [ ] Remover linhas com campos essenciais vazios
+- [ ] Converter `Status` em events para booleano (Confirmed = True)
+
+### Transformações Necessárias
+1. **Consolidar dados**: Juntar oppts com events através de `id` = `WhatId`
+2. **Criaí identificadores de vendedor**: Se `OwnerId` não tiver nome, usar o próprio ID
+3. **Calcular métricas por oportunidade**:
+   - Total de visitas (qualquer Status)
+   - Total de visitas confirmadas
+   - Taxa de confirmação de visitas
+
+---
+
+## 5. MÉTRICAS QUANTITATIVAS (Gráficos + Tabelas)
+
+### 5.1 Agregações Gerais
+- **Total de oportunidades**: Contagem única de `id`
+- **Total de visitas**: Contagem de linhas em events (independente do Status)
+- **Total de visitas confirmadas**: Contagem de events com Status = "Confirmed"
+- **Número médio de visitas por oportunidade**: Total visitas / Total oppts
+- **Taxa de conversão geral**: Oppts Ganhadas / Total Oppts (em %)
+
+### 5.2 Agregações por Vendedor/Responsável
+- **Oportunidades por responsável**: Tabela (Responsável | Qtd Oppts | % do Total)
+- **Visitas por responsável**: Tabela (Responsável | Qtd Visitas | Qtd Confirmadas)
+- **Oportunidades ganhadas por responsável**: Tabela (Responsável | Qtd Ganhadas | % Conversão)
+- **Taxa de conversão por vendedor**: (Oppts Ganhadas / Total Oppts por vendedor) × 100
+
+### 5.3 Análise por Tipo de Operação
+- **Oportunidades por tipo** (RecordType.Name): Tabela com contagens e conversão
+- **Conversão por tipo de operação**: (Ganhadas / Total) por tipo
+- **Média de visitas por tipo**: Total visitas / Total oppts, agrupado por tipo
+
+### 5.4 Visualizações Recomendadas (HTML)
+- Gráfico de barras: Oportunidades por vendedor
+- Gráfico de pizza: Distribuição de estágios (Ganhada, Perdida, etc)
+- Gráfico de linha: Taxa de conversão por vendedor
+- Tabela: Ranking de vendedores por conversão
+- Tabela: Detalhamento de visitas (Oppt ID | Vendedor | Qtd Visitas | Confirmadas | Taxa)
+
+---
+
+## 6. ANÁLISE QUALITATIVA (Perguntas Respondidas)
+
+Responda as seguintes perguntas com **dados** e **interpretação breve**:
+
+### 6.1 Questões Obrigatórias
+1. **Qual vendedor tem o maior número absoluto de oportunidades?**
+   - Resposta: Nome do vendedor | Qtd Oppts | % do Total
+
+2. **Qual vendedor tem a maior taxa de conversão geral?**
+   - Resposta: Nome | Conversão % | Qtd de oppts base
+
+3. **Existe correlação entre número de visitas e taxa de conversão?**
+   - Resposta: Análise se mais visitas = mais conversão
+
+### 6.2 Questões Derivadas (Insights)
+4. **Qual tipo de operação tem melhor conversão?**
+   - Compare Compras Global vs Buyer vs Ventas Global
+
+5. **Há fonte de oportunidades (Source__c) que converte melhor?**
+   - Ranking de fontes por taxa de conversão
+
+6. **Vendedores com muitas oppts mas baixa conversão merecem atenção?**
+   - Identificar outliers negativos
+
+7. **Qual é o número ideal de visitas para fechar uma oportunidade?**
+   - Comparar visitas em oppts Ganhadas vs Perdidas
+
+---
+
+## 7. RELATÓRIO - ESTRUTURA
+
+### 7.1 Arquivo TXT (relatorio_DD-MM-AAAA.txt)
+
+```
+================================================================================
+  RELATÓRIO DE FUNIL DE VENDAS - KAVAK
+  Data: DD/MM/AAAA
+  Período de Análise: [data mais recente de INPUT]
+================================================================================
+
+📊 RESUMO EXECUTIVO
+─────────────────────────────────────────────────────────────────────────────
+Total de Oportunidades:           XXX
+Total de Visitas:                 XXX
+Total de Visitas Confirmadas:     XXX
+Número Médio de Visitas/Oppt:     X.XX
+Taxa de Conversão Geral:          XX.XX%
+
+👤 TOP 3 VENDEDORES (por conversão)
+─────────────────────────────────────────────────────────────────────────────
+1. [Nome] - XX.XX% conversão (N oppts)
+2. [Nome] - XX.XX% conversão (N oppts)
+3. [Nome] - XX.XX% conversão (N oppts)
+
+📈 ANÁLISE QUANTITATIVA
+─────────────────────────────────────────────────────────────────────────────
+
+Oportunidades por Responsável:
+┌──────────────────┬────────────┬──────────┐
+│ Responsável      │ Qtd Oppts  │ % Total  │
+├──────────────────┼────────────┼──────────┤
+│ [Nome]           │     XX     │  XX.XX%  │
+│ ...              │     XX     │  XX.XX%  │
+└──────────────────┴────────────┴──────────┘
+
+Conversão por Responsável:
+┌──────────────────┬──────────┬──────────┬────────────┐
+│ Responsável      │ Ganhadas │ Perdidas │ Conversão  │
+├──────────────────┼──────────┼──────────┼────────────┤
+│ [Nome]           │    XX    │    XX    │   XX.XX%   │
+│ ...              │    XX    │    XX    │   XX.XX%   │
+└──────────────────┴──────────┴──────────┴────────────┘
+
+Análise por Tipo de Operação:
+┌────────────────────┬────────────┬──────────┐
+│ Tipo               │ Qtd Oppts  │ Conv %   │
+├────────────────────┼────────────┼──────────┤
+│ Compras Global     │     XX     │  XX.XX%  │
+│ Buyer              │     XX     │  XX.XX%  │
+│ Ventas Global      │     XX     │  XX.XX%  │
+└────────────────────┴────────────┴──────────┘
+
+💡 ANÁLISE QUALITATIVA E INSIGHTS
+─────────────────────────────────────────────────────────────────────────────
+
+1. Vendedor com Maior Número de Oportunidades:
+   [Resposta com dado e interpretação breve]
+
+2. Vendedor com Maior Taxa de Conversão:
+   [Resposta com dado e interpretação breve]
+
+3. Correlação entre Visitas e Conversão:
+   [Análise com interpretação]
+
+4. Desempenho por Tipo de Operação:
+   [Insights sobre qual tipo converte melhor]
+
+5. Insights Estratégicos:
+   [Observações adicionais: outliers, padrões, recomendações]
+
+================================================================================
+Processado em: DD/MM/AAAA às HH:MM:SS
+Próxima atualização: [data próxima esperada]
+================================================================================
+```
+
+### 7.2 Arquivo HTML (relatorio_DD-MM-AAAA.html)
+
+- Header com data e título
+- Cards com métricas principais (resumo executivo)
+- Gráficos interativos (barras, pizza, linhas)
+- Tabelas responsivas com dados detalhados
+- Seção de insights qualitativos formatada
+- Footer com timestamp
+
+---
+
+## 8. LOGS - ESTRUTURA
+
+### Arquivo: logs_processamento.txt
+
+```
+================================================================================
+  LOG DE PROCESSAMENTO
+  Iniciado: DD/MM/AAAA HH:MM:SS
+================================================================================
+
+[ETAPA 1] VALIDAÇÃO DE ENTRADA
+─────────────────────────────────────────────────────────────────────────────
+✓ Verificação de pastas: OK
+  Pasta detectada: INPUT/DD-MM-AAAA
+  Data mais recente: DD-MM-AAAA
+
+✓ Leitura de arquivos: OK
+  oppts.csv: N linhas (N registros válidos, X descartes)
+  events.csv: N linhas (N registros válidos, X descartes)
+
+[ETAPA 2] PROCESSAMENTO DE DADOS
+─────────────────────────────────────────────────────────────────────────────
+✓ Consolidação: OK
+  Oportunidades carregadas: N
+  Eventos carregados: N
+  Registros com eventos: N (X% cobertura)
+
+✓ Cálculo de métricas: OK
+  Total de métricas calculadas: [lista]
+
+[ETAPA 3] GERAÇÃO DE SAÍDA
+─────────────────────────────────────────────────────────────────────────────
+✓ Arquivo TXT gerado: relatorio_DD-MM-AAAA.txt
+✓ Arquivo HTML gerado: relatorio_DD-MM-AAAA.html
+✓ Arquivo JSON gerado: metricas_detalhadas.json
+
+[RESUMO]
+─────────────────────────────────────────────────────────────────────────────
+Status: ✓ SUCESSO
+Duração: X segundos
+Finalizado: DD/MM/AAAA HH:MM:SS
+
+[ALERTAS/OBSERVAÇÕES]
+─────────────────────────────────────────────────────────────────────────────
+[Se houver inconsistências, listar aqui]
+```
+
+---
+
+## 9. PADRÃO DE ESTILO - RELATÓRIOS
+
+### 9.1 Paleta de Cores
+
+```
+Primária (Kavak):       #E30613 (Vermelho intenso)
+Secundária:             #1A1A1A (Preto)
+Sucesso:                #28A745 (Verde)
+Atenção:                #FFC107 (Amarelo/Laranja)
+Erro/Risco:             #DC3545 (Vermelho claro)
+Neutro Light:           #F8F9FA (Cinza claro)
+Neutro Medium:          #E9ECEF (Cinza médio)
+Neutro Dark:            #495057 (Cinza escuro)
+Texto Principal:        #212529 (Cinza muito escuro)
+Texto Secundário:       #6C757D (Cinza médio)
+Background:             #FFFFFF (Branco)
+```
+
+### 9.2 Tipografia
+
+**Fonte Principal**: Segoe UI, Roboto, "Helvetica Neue", sans-serif
+
+```
+H1 (Título Principal):      32px, Bold (700), Color: #E30613, margin-bottom: 24px
+H2 (Seção):                 24px, Bold (700), Color: #1A1A1A, margin-top: 32px, margin-bottom: 16px
+H3 (Subseção):              18px, SemiBold (600), Color: #495057, margin-top: 24px, margin-bottom: 12px
+H4 (Label):                 16px, SemiBold (600), Color: #212529
+Body (Texto padrão):        14px, Regular (400), Color: #212529, line-height: 1.6
+Body Small (Rodapé):        12px, Regular (400), Color: #6C757D
+Métrica (Números):          16px, Bold (700), Color: #E30613
+Tabela (Célula):            13px, Regular (400), Color: #212529
+```
+
+### 9.3 Espaçamento
+
+```
+Padding geral:              16px
+Padding interno (cards):    20px
+Margin entre seções:        32px
+Margin entre elementos:     16px
+Linha divisória:            margin: 24px 0, border: 1px solid #E9ECEF
+Border-radius:              4px (botões, cards), 8px (containers grandes)
+```
+
+### 9.4 Estrutura HTML - Padrão
+
+#### Header
+```html
+<header style="background: linear-gradient(135deg, #E30613 0%, #A80410 100%); color: white; padding: 32px 24px; text-align: center;">
+  <h1 style="margin: 0; font-size: 32px;">RELATÓRIO DE FUNIL DE VENDAS</h1>
+  <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">KAVAK Brasil | Análise de Conversão</p>
+  <p style="margin: 8px 0 0 0; font-size: 13px; opacity: 0.8;">Período: DD/MM/AAAA</p>
+</header>
+```
+
+#### Card de Métrica
+```html
+<div style="background: #F8F9FA; border-left: 4px solid #E30613; padding: 16px; border-radius: 4px; margin-bottom: 16px;">
+  <p style="margin: 0 0 8px 0; font-size: 12px; color: #6C757D; text-transform: uppercase; letter-spacing: 0.5px;">
+    Label da Métrica
+  </p>
+  <p style="margin: 0; font-size: 28px; font-weight: 700; color: #E30613;">
+    999.99
+  </p>
+  <p style="margin: 8px 0 0 0; font-size: 12px; color: #6C757D;">
+    Variação: +X% vs período anterior
+  </p>
+</div>
+```
+
+#### Tabela Padrão
+```html
+<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
+  <thead>
+    <tr style="background: #F8F9FA; border-bottom: 2px solid #E30613;">
+      <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #212529;">Coluna 1</th>
+      <th style="padding: 12px 8px; text-align: right; font-weight: 600; color: #212529;">Coluna 2</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid #E9ECEF;">
+      <td style="padding: 12px 8px; color: #212529;">Dados</td>
+      <td style="padding: 12px 8px; text-align: right; color: #212529;">Dados</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+#### Badge/Tag
+```html
+<!-- Sucesso -->
+<span style="display: inline-block; background: #D4EDDA; color: #155724; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+  ✓ SUCESSO
+</span>
+
+<!-- Atenção -->
+<span style="display: inline-block; background: #FFF3CD; color: #856404; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+  ⚠ ATENÇÃO
+</span>
+
+<!-- Erro -->
+<span style="display: inline-block; background: #F8D7DA; color: #721C24; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+  ✗ ERRO
+</span>
+```
+
+### 9.5 Gráficos - Configuração
+
+**Biblioteca recomendada**: Chart.js ou Plotly.js
+
+#### Gráfico de Barras
+```
+- Cor de barras: #E30613 (primária) com variações em escala
+- Hover: Aumento de opacidade (0.8)
+- Grid: Subtle (#E9ECEF)
+- Font: 12px, color: #495057
+- Legenda: Abaixo, horizontal, fonte 12px
+```
+
+#### Gráfico de Pizza
+```
+- Cores: Sequência [#E30613, #FFC107, #28A745, #007BFF, #6C757D, ...]
+- Hover: Aumento de blur
+- Labels: Percentual + label, font 12px
+- Legenda: Direita, fonte 11px
+```
+
+#### Gráfico de Linha
+```
+- Cor da linha: #E30613
+- Ponto: 4px, cor #E30613
+- Preenchimento: Transparência 0.1 de #E30613
+- Eixo Y: Começar em 0 ou min-5%
+- Grid: Subtle (#E9ECEF)
+```
+
+### 9.6 Layout Responsivo
+
+```
+Desktop (>1024px):
+  - Width: 1200px, margin: 0 auto
+  - Colunas: 2-3 por linha (métricas)
+  - Gráficos: 50% width lado a lado
+
+Tablet (768px-1023px):
+  - Width: 100%, padding: 16px
+  - Colunas: 2 por linha
+  - Gráficos: 100% width, 50% alt
+
+Mobile (<768px):
+  - Width: 100%, padding: 12px
+  - Colunas: 1 por linha
+  - Gráficos: 100% width, stackados
+  - Font: Reduzir 10-15% para títulos
+```
+
+### 9.7 Estrutura do Arquivo HTML Completo
+
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório de Funil - KAVAK</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: #F8F9FA;
+      color: #212529;
+      line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .section { background: white; padding: 24px; margin-bottom: 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    h2 { color: #1A1A1A; border-bottom: 2px solid #E30613; padding-bottom: 12px; margin-bottom: 16px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 768px) {
+      .container { padding: 12px; }
+      .metrics-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header><!-- conforme template acima --></header>
+  <div class="container">
+    <!-- Resumo Executivo -->
+    <section class="section">
+      <h2>📊 Resumo Executivo</h2>
+      <div class="metrics-grid">
+        <!-- Cards de métrica conforme template -->
+      </div>
+    </section>
+    
+    <!-- Análise Quantitativa -->
+    <section class="section">
+      <h2>📈 Análise Quantitativa</h2>
+      <!-- Gráficos -->
+      <!-- Tabelas -->
+    </section>
+    
+    <!-- Análise Qualitativa -->
+    <section class="section">
+      <h2>💡 Insights e Análise Qualitativa</h2>
+      <!-- Respostas às perguntas -->
+    </section>
+  </div>
+  
+  <footer><!-- rodapé --></footer>
+</body>
+</html>
+```
+
+### 9.8 Arquivo TXT - Padrão de Formatação
+
+```
+Caracteres especiais permitidos:
+├── ┤ ┬ ┴ ┌ ┐ └ ┘ ─ │ ┼ (Box drawing)
+✓ ✗ ⚠ ℹ → ← ↑ ↓ ○ ● (Symbols)
+📊 📈 💡 👤 ⏱ (Emojis - restringir a máximo 1 por linha)
+
+Largura máxima de linha: 80 caracteres
+Linhas de separação: '─' repetido 80x (minimo)
+Padding horizontal: 2 espaços mínimo em cada lado
+Linhas em branco: 1 entre seções, 0 dentro de tabelas
+Indentação: 2 espaços (nunca tabs)
+```
+
+### 9.9 Paleta de Cores Secundária (Tema Alternativo)
+
+Se empresa solicitar tema claro/escuro:
+
+**Tema Escuro:**
+```
+Background:    #1A1A1A
+Texto:         #F8F9FA
+Primária:      #FF5733
+Cards:         #2D2D2D
+Borders:       #404040
+```
+
+### 9.10 Checklist de Consistência
+
+- [ ] Todas as cores seguem paleta definida
+- [ ] Tipografia coerente em todo documento
+- [ ] Espaçamento uniforme (múltiplos de 4px ou 8px)
+- [ ] Tabelas com cabeçalho destacado
+- [ ] Gráficos com legenda clara
+- [ ] HTML válido (verificar com W3C validator)
+- [ ] Responsivo testado em mobile, tablet, desktop
+- [ ] Acessibilidade: contrast ratio mínimo 4.5:1
+- [ ] Arquivo carregável sem dependências externas (CSS inlined)
+- [ ] Nenhuma quebra de layout em diferentes browsers
+
+---
+
+## 10. TRATAMENTO DE ERROS
+
+| Cenário | Ação |
+|---------|------|
+| Nenhuma pasta em INPUT | Criar `OUTPUT/DD-MM-AAAA/no_data_processed.txt` com descrição |
+| Arquivo CSV corrompido | Registrar no log e pular processamento desse arquivo |
+| Linhas com dados incompletos | Descartar linha e registrar qtd no log |
+| Erro ao gerar HTML | Gerar apenas arquivo TXT e registrar erro no log |
+| OwnerId vazio | Usar valor "Sem Atribuição" |
+
+---
+
+## 10. COMANDOS / INVOCAÇÕES
+
+```bash
+# Executar análise (pseudocódigo)
+python workflow_vendas.py --input INPUT --output OUTPUT --date DD-MM-AAAA
+```
+
+---
+
+## 11. NOTAS IMPORTANTES
+
+- **Idempotência**: Executar 2x o mesmo dia não deve duplicar dados
+- **Timestamps**: Usar timezone local do Brasil (America/Sao_Paulo)
+- **Nomes de Responsáveis**: Se houver ID sem nome, alertar no log
+- **Valores nulos**: Tratar como 0 em contagens, mas documentar na seção de alertas
+- **Comparabilidade**: Manter mesmo formato de saída entre execuções
+
+---
+
+## 12. AUTOMATIZAÇÃO E SCHEDULER
+
+### 12.1 Prompt para Scheduler (Recorrente)
+
+**Nome da Tarefa**: `relatorio-funil-vendas-diario`  
+**Frequência**: Diariamente às 08:00 (AM, São Paulo)  
+**Duração esperada**: 5-10 minutos
+
+```
+Você é um analista de BI automatizado. Execute o workflow de 
+processamento de relatório de funil de vendas conforme as 
+regras abaixo:
+
+**ENTRADA**: 
+- Procure por pastas em ~/INPUT/ com formato DD-MM-AAAA
+- Use a pasta com a DATA MAIS RECENTE disponível
+- Se nenhuma pasta existir, registre no log e encerre
+
+**PROCESSAMENTO**:
+Siga EXATAMENTE a estrutura do documento:
+- Leia oppts.csv e events.csv
+- Valide e limpe os dados
+- Calcule todas as 10+ métricas quantitativas listadas
+- Responda as 7 questões qualitativas com insights
+- Use os padrões de estilo definidos (paleta, tipografia, layout)
+
+**SAÍDA**:
+Crie pasta OUTPUT/DD-MM-AAAA/ com:
+1. relatorio_DD-MM-AAAA.txt (estrutura conforme Seção 7.1)
+2. relatorio_DD-MM-AAAA.html (com CSS inlined, responsivo)
+3. metricas_detalhadas.json (formato acessível)
+4. logs_processamento.txt (conforme Seção 8)
+
+**REGRAS CRÍTICAS**:
+✓ Mantém consistência visual (cores #E30613, fonte Segoe UI)
+✓ Gera 3 arquivos sempre (mesmo que dados sejam vazios)
+✓ Registra TODAS as transformações no log
+✓ Usa timestamp formato DD/MM/AAAA HH:MM:SS
+✓ Não sobrescreve relatórios da mesma data
+
+**NOTIFICAR AO TÉRMINO**:
+- Sucesso: "✓ Relatório gerado com sucesso - DD/MM/AAAA"
+- Falha: "✗ Erro no processamento - verifique logs"
+```
+
+### 12.2 Configuração no Scheduler de Claude/Cowork
+
+**Passo 1**: Abrir Scheduler no Cowork
+```
+Menu → Automação → Criar Tarefa Agendada
+```
+
+**Passo 2**: Preencher Formulário
+| Campo | Valor |
+|-------|-------|
+| **Nome** | relatorio-funil-vendas-diario |
+| **Descrição** | Processa dados de vendas e gera relatório funil |
+| **Frequência** | Diária |
+| **Hora** | 08:00 (América/São_Paulo) |
+| **Ativar em** | Segunda a Sexta (ou todos os dias) |
+| **Prompt** | [Cole o prompt da seção 12.1] |
+| **Pasta de trabalho** | /Users/bruno/Documents/curso/report |
+
+**Passo 3**: Testar Manualmente
+```
+- Clique "Executar agora"
+- Monitore a primeira execução
+- Valide outputs em OUTPUT/
+- Verifique logs_processamento.txt
+```
+
+**Passo 4**: Ajustar Configuração
+- Se houver erro: edite prompt, corrija, teste novamente
+- Se sucesso: marque como "Produção"
+- Configure notificações (email ao término)
+
+### 12.3 Alternativa: Execução Manual com Prompt Pronto
+
+Se não puder usar Scheduler agora, use este prompt direto:
+
+```
+Processe os dados de vendas disponíveis em ~/INPUT/ seguindo 
+EXATAMENTE o documento:
+/Users/bruno/Documents/curso/report/prompt_workflow_melhorado.md
+
+Especificamente:
+- Seção 2 (Estrutura de diretórios)
+- Seção 3 (Arquivos de entrada)
+- Seção 4 (Processamento de dados)
+- Seção 5 (Métricas quantitativas)
+- Seção 6 (Análise qualitativa)
+- Seção 7 (Estrutura do relatório)
+- Seção 8 (Logs)
+- Seção 9 (Padrão de estilo)
+
+Gere OUTPUT completo com arquivos TXT, HTML e JSON.
+```
+
+---
+
+## 13. FLUXO DE EXECUÇÃO - DIAGRAMA
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    SCHEDULER DIÁRIO 08:00                    │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+        ┌──────────────────────────────┐
+        │ 1. Validação de Entrada      │
+        │ - Procura pasta INPUT recente│
+        │ - Valida CSVs               │
+        └──────────┬───────────────────┘
+                   │
+        ┌──────────▼───────────────────┐
+        │ 2. Limpeza de Dados         │
+        │ - Remove duplicatas         │
+        │ - Valida campos             │
+        │ - Remove nulos              │
+        └──────────┬───────────────────┘
+                   │
+        ┌──────────▼───────────────────┐
+        │ 3. Cálculo de Métricas      │
+        │ - Quantitativas (10)        │
+        │ - Qualitativas (7)          │
+        └──────────┬───────────────────┘
+                   │
+        ┌──────────▼───────────────────┐
+        │ 4. Geração de Outputs       │
+        │ - TXT com tabelas           │
+        │ - HTML com gráficos         │
+        │ - JSON com dados brutos     │
+        │ - LOG com rastreamento      │
+        └──────────┬───────────────────┘
+                   │
+        ┌──────────▼───────────────────┐
+        │ 5. Validação Final          │
+        │ - Arquivos criados?         │
+        │ - Nenhum erro?              │
+        │ - Estilos aplicados?        │
+        └──────────┬───────────────────┘
+                   │
+        ┌──────────▼───────────────────┐
+        │ 6. Notificação             │
+        │ ✓ Sucesso ou ✗ Erro        │
+        └──────────────────────────────┘
+```
+
+---
+
+## 14. CHECKLIST - OS 3 PASSOS CUMPRIDOS
+
+### ✅ PASO 1 — Define tu fuente de datos
+
+- [x] **Fonte de dados identificada**: CSV (oppts.csv, events.csv)
+- [x] **Dados mapeados**:
+  - oppts.csv: 6 campos (id, Account.AccountExtId__c, Source__c, RecordType.Name, StageName, OwnerId)
+  - events.csv: 3 campos (WhatId, Subject, Status)
+- [x] **Dados realistas**:
+  - Estrutura plausível para Salesforce/CRM de vendas
+  - Campos correspondem a operações reais da Kavak
+  - Valores mudam semana a semana (oportunidades, visitas, conversões)
+- [x] **Frequência de atualização**: Diária (pasta INPUT/DD-MM-AAAA criada a cada dia)
+- [x] **Validações de entrada** (Seção 4):
+  - Remoção de duplicatas
+  - Validação de campos obrigatórios
+  - Tratamento de nulos
+
+---
+
+### ✅ PASO 2 — Diseña la estructura del reporte
+
+- [x] **Métricas definidas** (Seção 5):
+  - 10+ quantitativas (total oppts, visitas, conversão, etc)
+  - Desagregadas por responsável, por tipo, por fonte
+- [x] **Análise qualitativa** (Seção 6):
+  - 7 perguntas estruturadas + insights
+  - Respondidas com dados concretos
+- [x] **Formato**: 
+  - TXT com tabelas ASCII (Seção 7.1)
+  - HTML responsivo com CSS inlined (Seção 7.2)
+  - JSON para integrações futuras
+- [x] **Destinatário**: Gerentes comerciais da Kavak
+- [x] **Decisão apoiada**: 
+  - Identificar vendedores top performers
+  - Detectar oportunidades de melhoria
+  - Reconhecer padrões de conversão
+- [x] **Padrão visual** (Seção 9):
+  - Cores, tipografia, espaçamento definidos
+  - Responsividade mobile/tablet/desktop
+  - Gráficos padronizados
+
+---
+
+### ✅ PASO 3 — Configura la automatización
+
+- [x] **Prompt recorrente pronto** (Seção 12.1):
+  - Instruções completas em um prompt
+  - Reutilizável semana após semana
+  - Referencia exato do documento
+- [x] **Scheduler configurado** (Seção 12.2):
+  - Frequência: Diária às 08:00 (Brasil)
+  - Passo-a-passo de setup no Cowork
+  - Teste manual recomendado
+- [x] **Alternativa manual** (Seção 12.3):
+  - Prompt pronto para uso sem scheduler
+  - Referencia exato de seções
+- [x] **Fluxo documentado** (Seção 13):
+  - 6 etapas de execução
+  - Validações em cada passo
+  - Notificação ao fim
+
+---
+
+## 15. EXEMPLO DE EXECUÇÃO REAL
+
+### Dia 1: Setup (Manual)
+
+```
+1. Cria pasta: ~/INPUT/18-09-2026/
+2. Coloca: oppts.csv e events.csv
+3. Executa prompt da Seção 12.3
+4. Verifica OUTPUT/18-09-2026/
+   ✓ relatorio_18-09-2026.txt
+   ✓ relatorio_18-09-2026.html
+   ✓ metricas_detalhadas.json
+   ✓ logs_processamento.txt
+```
+
+### Dia 2-N: Automático (Scheduler)
+
+```
+08:00 - Scheduler executa prompt
+08:05 - Processa INPUT/19-09-2026/
+08:08 - Gera OUTPUT/19-09-2026/
+08:10 - Notifica: ✓ Relatório gerado com sucesso
+       Gerente abre relatorio_19-09-2026.html
+```
+
+---
+
+## 16. PRÓXIMAS EVOLUÇÕES
+
+Após implantar e manter por 4-8 semanas:
+
+1. **Análise comparativa**: Relatório semana vs semana
+2. **Alertas automáticos**: Notificar se conversão cai >10%
+3. **Previsões**: Usar dados históricos para forecast
+4. **Integração**: Enviar HTML direto por email/Slack
+5. **Dashboard**: Acompanhamento em tempo real
+6. **A/B Testing**: Testar diferentes layouts de reporte
+
+---
+
+**Versão**: 1.2  
+**Última atualização**: 18/09/2026  
+**Status**: ✅ Pronto para Produção  
+

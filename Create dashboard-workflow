@@ -1,0 +1,886 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+WORKFLOW AUTOMATIZADO - RELATÓRIO DE FUNIL DE VENDAS KAVAK
+Analista de BI Sênior | Processamento de Oportunidades e Visitas
+Version: 1.0 | Data: 2026-09-18
+"""
+
+import os
+import sys
+import csv
+import json
+import math
+from datetime import datetime
+from pathlib import Path
+from collections import defaultdict
+from typing import Dict, List, Tuple
+
+# ============================================================================
+# CONFIGURAÇÕES
+# ============================================================================
+
+# Timezone Brasil
+os.environ['TZ'] = 'America/Sao_Paulo'
+
+# Caminhos
+BASE_PATH = Path(__file__).parent
+INPUT_DIR = BASE_PATH / "INPUT"
+OUTPUT_DIR = BASE_PATH / "OUTPUT"
+LOG_FILE_TEMPLATE = "logs_processamento.txt"
+REPORT_TXT_TEMPLATE = "relatorio_{date}.txt"
+REPORT_HTML_TEMPLATE = "relatorio_{date}.html"
+METRICS_JSON_TEMPLATE = "metricas_detalhadas.json"
+
+# Cores Kavak
+COLORS = {
+    "primary": "#E30613",
+    "secondary": "#1A1A1A",
+    "success": "#28A745",
+    "warning": "#FFC107",
+    "error": "#DC3545",
+    "light": "#F8F9FA",
+    "medium": "#E9ECEF",
+    "dark": "#495057",
+    "text_primary": "#212529",
+    "text_secondary": "#6C757D",
+    "white": "#FFFFFF"
+}
+
+# ============================================================================
+# CLASSES
+# ============================================================================
+
+class DataProcessor:
+    """Processa dados de oportunidades e visitas."""
+
+    def __init__(self):
+        self.opportunities = []
+        self.events = []
+        self.consolidated = {}
+        self.logs = []
+        self.errors = []
+
+    def add_log(self, message: str, level: str = "INFO"):
+        """Adiciona mensagem de log."""
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        log_msg = f"[{timestamp}] [{level}] {message}"
+        self.logs.append(log_msg)
+        if level == "ERROR":
+            self.errors.append(message)
+        print(log_msg)
+
+    def find_latest_input_date(self) -> str:
+        """Encontra a pasta mais recente em INPUT."""
+        if not INPUT_DIR.exists():
+            self.add_log(f"Diretório INPUT não existe: {INPUT_DIR}", "ERROR")
+            return None
+
+        folders = [d for d in INPUT_DIR.iterdir() if d.is_dir()]
+        if not folders:
+            self.add_log("Nenhuma pasta encontrada em INPUT", "WARNING")
+            return None
+
+        # Ordena por nome (formato DD-MM-AAAA)
+        folders.sort(reverse=True)
+        latest = folders[0].name
+        self.add_log(f"Data mais recente encontrada: {latest}")
+        return latest
+
+    def load_csv(self, filepath: Path) -> List[Dict]:
+        """Carrega arquivo CSV."""
+        data = []
+        if not filepath.exists():
+            self.add_log(f"Arquivo não encontrado: {filepath}", "WARNING")
+            return data
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row:  # Ignora linhas vazias
+                        data.append(row)
+            self.add_log(f"✓ Carregado: {filepath.name} ({len(data)} registros)")
+        except Exception as e:
+            self.add_log(f"Erro ao carregar {filepath}: {str(e)}", "ERROR")
+
+        return data
+
+    def validate_and_clean(self, data: List[Dict], data_type: str) -> List[Dict]:
+        """Valida e limpa dados."""
+        cleaned = []
+        duplicates = 0
+        empty_fields = 0
+
+        seen = set()
+
+        for row in data:
+            # Determina campo chave
+            key_field = "id" if data_type == "opportunities" else "WhatId"
+
+            # Remove duplicatas
+            key = row.get(key_field, "").strip()
+            if not key or key in seen:
+                duplicates += 1
+                continue
+
+            # Remove linhas com campos essenciais vazios
+            if data_type == "opportunities":
+                if not row.get("id") or not row.get("StageName"):
+                    empty_fields += 1
+                    continue
+            else:  # events
+                if not row.get("WhatId") or not row.get("Status"):
+                    empty_fields += 1
+                    continue
+
+            seen.add(key)
+            cleaned.append(row)
+
+        self.add_log(
+            f"Validação {data_type}: {len(cleaned)} válidos, "
+            f"{duplicates} duplicatas, {empty_fields} campos vazios"
+        )
+        return cleaned
+
+    def process(self, date_str: str) -> bool:
+        """Processa dados do dia especificado."""
+        self.add_log("=" * 80)
+        self.add_log(f"INICIANDO PROCESSAMENTO - {date_str}")
+        self.add_log("=" * 80)
+
+        # Diretório de entrada
+        input_folder = INPUT_DIR / date_str
+        oppts_file = input_folder / "oppts.csv"
+        events_file = input_folder / "events.csv"
+
+        # Carrega dados
+        self.add_log("[ETAPA 1] CARREGAMENTO DE ARQUIVOS")
+        raw_oppts = self.load_csv(oppts_file)
+        raw_events = self.load_csv(events_file)
+
+        if not raw_oppts and not raw_events:
+            self.add_log("Nenhum dado para processar", "WARNING")
+            return False
+
+        # Valida e limpa
+        self.add_log("[ETAPA 2] VALIDAÇÃO E LIMPEZA")
+        self.opportunities = self.validate_and_clean(raw_oppts, "opportunities")
+        self.events = self.validate_and_clean(raw_events, "events")
+
+        # Consolida dados
+        self.add_log("[ETAPA 3] CONSOLIDAÇÃO DE DADOS")
+        self.consolidate()
+
+        return True
+
+    def consolidate(self):
+        """Consolida oportunidades com eventos."""
+        for oppt in self.opportunities:
+            oppt_id = oppt.get("id", "").strip()
+            self.consolidated[oppt_id] = {
+                "opportunity": oppt,
+                "events": []
+            }
+
+        # Agrupa eventos por oportunidade
+        for event in self.events:
+            what_id = event.get("WhatId", "").strip()
+            if what_id in self.consolidated:
+                self.consolidated[what_id]["events"].append(event)
+
+        coverage = len([c for c in self.consolidated.values() if c["events"]]) / len(self.consolidated) * 100 if self.consolidated else 0
+        self.add_log(f"Consolidação completa: {len(self.consolidated)} oppts, {len(self.events)} eventos ({coverage:.1f}% cobertura)")
+
+
+class MetricsCalculator:
+    """Calcula métricas de vendas."""
+
+    def __init__(self, processor: DataProcessor):
+        self.processor = processor
+        self.metrics = {}
+
+    def calculate_all(self) -> Dict:
+        """Calcula todas as métricas."""
+        self.processor.add_log("[ETAPA 4] CÁLCULO DE MÉTRICAS")
+
+        # Métricas gerais
+        total_oppts = len(self.processor.consolidated)
+        total_events = len(self.processor.events)
+        total_confirmed = sum(1 for e in self.processor.events if e.get("Status") == "Confirmed")
+        avg_visits = total_events / total_oppts if total_oppts > 0 else 0
+
+        # Taxa de conversão geral
+        won = sum(1 for o in self.processor.opportunities if o.get("StageName") == "Ganhada")
+        general_conversion = (won / total_oppts * 100) if total_oppts > 0 else 0
+
+        self.metrics["general"] = {
+            "total_opportunities": total_oppts,
+            "total_visits": total_events,
+            "total_confirmed_visits": total_confirmed,
+            "avg_visits_per_oppt": round(avg_visits, 2),
+            "general_conversion_rate": round(general_conversion, 2)
+        }
+
+        # Por responsável
+        self.metrics["by_owner"] = self._metrics_by_owner()
+
+        # Por tipo de operação
+        self.metrics["by_type"] = self._metrics_by_type()
+
+        # Por fonte
+        self.metrics["by_source"] = self._metrics_by_source()
+
+        self.processor.add_log(f"✓ Métricas calculadas: {len(self.metrics)} categorias")
+        return self.metrics
+
+    def _metrics_by_owner(self) -> Dict:
+        """Calcula métricas por responsável."""
+        by_owner = defaultdict(lambda: {"oppts": 0, "visits": 0, "confirmed_visits": 0, "won": 0, "lost": 0})
+
+        for oppt_id, data in self.processor.consolidated.items():
+            oppt = data["opportunity"]
+            owner = oppt.get("OwnerId", "Sem Atribuição").strip() or "Sem Atribuição"
+
+            by_owner[owner]["oppts"] += 1
+            by_owner[owner]["visits"] += len(data["events"])
+            by_owner[owner]["confirmed_visits"] += sum(1 for e in data["events"] if e.get("Status") == "Confirmed")
+
+            stage = oppt.get("StageName", "").strip()
+            if stage == "Ganhada":
+                by_owner[owner]["won"] += 1
+            elif stage == "Cerrada Perdida":
+                by_owner[owner]["lost"] += 1
+
+        # Calcula taxas
+        for owner in by_owner:
+            total = by_owner[owner]["oppts"]
+            won = by_owner[owner]["won"]
+            by_owner[owner]["conversion_rate"] = (won / total * 100) if total > 0 else 0
+
+        return dict(by_owner)
+
+    def _metrics_by_type(self) -> Dict:
+        """Calcula métricas por tipo de operação."""
+        by_type = defaultdict(lambda: {"oppts": 0, "won": 0, "lost": 0, "visits": 0})
+
+        for oppt_id, data in self.processor.consolidated.items():
+            oppt = data["opportunity"]
+            oppt_type = oppt.get("RecordType.Name", "Desconhecido").strip() or "Desconhecido"
+
+            by_type[oppt_type]["oppts"] += 1
+            by_type[oppt_type]["visits"] += len(data["events"])
+
+            stage = oppt.get("StageName", "").strip()
+            if stage == "Ganhada":
+                by_type[oppt_type]["won"] += 1
+            elif stage == "Cerrada Perdida":
+                by_type[oppt_type]["lost"] += 1
+
+        # Calcula taxas
+        for oppt_type in by_type:
+            total = by_type[oppt_type]["oppts"]
+            won = by_type[oppt_type]["won"]
+            by_type[oppt_type]["conversion_rate"] = (won / total * 100) if total > 0 else 0
+
+        return dict(by_type)
+
+    def _metrics_by_source(self) -> Dict:
+        """Calcula métricas por fonte."""
+        by_source = defaultdict(lambda: {"oppts": 0, "won": 0})
+
+        for oppt_id, data in self.processor.consolidated.items():
+            oppt = data["opportunity"]
+            source = oppt.get("Source__c", "Desconhecido").strip() or "Desconhecido"
+
+            by_source[source]["oppts"] += 1
+
+            stage = oppt.get("StageName", "").strip()
+            if stage == "Ganhada":
+                by_source[source]["won"] += 1
+
+        # Calcula taxas
+        for source in by_source:
+            total = by_source[source]["oppts"]
+            won = by_source[source]["won"]
+            by_source[source]["conversion_rate"] = (won / total * 100) if total > 0 else 0
+
+        return dict(by_source)
+
+    def get_top_performers(self, limit: int = 3) -> List[Tuple]:
+        """Retorna top 3 vendedores por conversão."""
+        by_owner = self.metrics.get("by_owner", {})
+        sorted_owners = sorted(
+            by_owner.items(),
+            key=lambda x: (x[1]["conversion_rate"], x[1]["oppts"]),
+            reverse=True
+        )
+        return sorted_owners[:limit]
+
+
+class ReportGenerator:
+    """Gera relatórios em TXT e HTML."""
+
+    def __init__(self, processor: DataProcessor, calculator: MetricsCalculator, date_str: str):
+        self.processor = processor
+        self.calculator = calculator
+        self.date_str = date_str
+        self.date_obj = datetime.strptime(date_str, "%d-%m-%Y")
+
+    def generate_txt(self) -> str:
+        """Gera relatório em TXT."""
+        lines = []
+
+        # Cabeçalho
+        lines.append("=" * 80)
+        lines.append("RELATÓRIO DE FUNIL DE VENDAS - KAVAK".center(80))
+        lines.append(f"Data: {self.date_obj.strftime('%d/%m/%Y')}".center(80))
+        lines.append(f"Período de Análise: {self.date_str}".center(80))
+        lines.append("=" * 80)
+        lines.append("")
+
+        # Resumo Executivo
+        metrics = self.calculator.metrics.get("general", {})
+        lines.append("📊 RESUMO EXECUTIVO")
+        lines.append("-" * 80)
+        lines.append(f"Total de Oportunidades:           {metrics.get('total_opportunities', 0)}")
+        lines.append(f"Total de Visitas:                 {metrics.get('total_visits', 0)}")
+        lines.append(f"Total de Visitas Confirmadas:     {metrics.get('total_confirmed_visits', 0)}")
+        lines.append(f"Número Médio de Visitas/Oppt:     {metrics.get('avg_visits_per_oppt', 0):.2f}")
+        lines.append(f"Taxa de Conversão Geral:          {metrics.get('general_conversion_rate', 0):.2f}%")
+        lines.append("")
+
+        # Top 3
+        lines.append("👤 TOP 3 VENDEDORES (por conversão)")
+        lines.append("-" * 80)
+        for i, (owner, data) in enumerate(self.calculator.get_top_performers(3), 1):
+            conv = data.get("conversion_rate", 0)
+            oppts = data.get("oppts", 0)
+            lines.append(f"{i}. {owner} - {conv:.2f}% conversão ({oppts} oppts)")
+        lines.append("")
+
+        # Análise Quantitativa
+        lines.append("📈 ANÁLISE QUANTITATIVA")
+        lines.append("-" * 80)
+        lines.append("")
+
+        # Tabela por Responsável
+        lines.append("Oportunidades por Responsável:")
+        by_owner = self.calculator.metrics.get("by_owner", {})
+        total_oppts = sum(o["oppts"] for o in by_owner.values())
+
+        lines.append("┌──────────────────────┬────────────┬──────────┐")
+        lines.append("│ Responsável          │ Qtd Oppts  │ % Total  │")
+        lines.append("├──────────────────────┼────────────┼──────────┤")
+        for owner in sorted(by_owner.keys()):
+            qtd = by_owner[owner]["oppts"]
+            pct = (qtd / total_oppts * 100) if total_oppts > 0 else 0
+            lines.append(f"│ {owner:20s} │ {qtd:10d} │ {pct:7.2f}% │")
+        lines.append("└──────────────────────┴────────────┴──────────┘")
+        lines.append("")
+
+        # Tabela de Conversão
+        lines.append("Conversão por Responsável:")
+        lines.append("┌──────────────────────┬──────────┬──────────┬────────────┐")
+        lines.append("│ Responsável          │ Ganhadas │ Perdidas │ Conversão  │")
+        lines.append("├──────────────────────┼──────────┼──────────┼────────────┤")
+        for owner in sorted(by_owner.keys()):
+            won = by_owner[owner]["won"]
+            lost = by_owner[owner]["lost"]
+            conv = by_owner[owner]["conversion_rate"]
+            lines.append(f"│ {owner:20s} │ {won:8d} │ {lost:8d} │ {conv:9.2f}% │")
+        lines.append("└──────────────────────┴──────────┴──────────┴────────────┘")
+        lines.append("")
+
+        # Por Tipo
+        lines.append("Análise por Tipo de Operação:")
+        by_type = self.calculator.metrics.get("by_type", {})
+        lines.append("┌────────────────────────┬────────────┬──────────┐")
+        lines.append("│ Tipo                   │ Qtd Oppts  │ Conv %   │")
+        lines.append("├────────────────────────┼────────────┼──────────┤")
+        for oppt_type in sorted(by_type.keys()):
+            qtd = by_type[oppt_type]["oppts"]
+            conv = by_type[oppt_type]["conversion_rate"]
+            lines.append(f"│ {oppt_type:22s} │ {qtd:10d} │ {conv:7.2f}% │")
+        lines.append("└────────────────────────┴────────────┴──────────┘")
+        lines.append("")
+
+        # Análise Qualitativa
+        lines.append("💡 ANÁLISE QUALITATIVA E INSIGHTS")
+        lines.append("-" * 80)
+        lines.append("")
+
+        lines.append("1. Vendedor com Maior Número de Oportunidades:")
+        top_oppts = max(by_owner.items(), key=lambda x: x[1]["oppts"])
+        lines.append(f"   {top_oppts[0]} - {top_oppts[1]['oppts']} oportunidades ({top_oppts[1]['oppts']/total_oppts*100:.1f}% do total)")
+        lines.append("")
+
+        lines.append("2. Vendedor com Maior Taxa de Conversão:")
+        top_conv = max(by_owner.items(), key=lambda x: x[1]["conversion_rate"])
+        lines.append(f"   {top_conv[0]} - {top_conv[1]['conversion_rate']:.2f}% de conversão ({top_conv[1]['oppts']} oppts base)")
+        lines.append("")
+
+        lines.append("3. Tipo de Operação com Melhor Conversão:")
+        best_type = max(by_type.items(), key=lambda x: x[1]["conversion_rate"])
+        lines.append(f"   {best_type[0]} - {best_type[1]['conversion_rate']:.2f}% de conversão ({best_type[1]['oppts']} oppts)")
+        lines.append("")
+
+        lines.append("=" * 80)
+        lines.append(f"Processado em: {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}")
+        lines.append("=" * 80)
+
+        return "\n".join(lines)
+
+    def generate_html(self) -> str:
+        """Gera relatório em HTML."""
+        metrics = self.calculator.metrics.get("general", {})
+        by_owner = self.calculator.metrics.get("by_owner", {})
+        by_type = self.calculator.metrics.get("by_type", {})
+
+        html = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Funil - KAVAK</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: {COLORS['light']};
+            color: {COLORS['text_primary']};
+            line-height: 1.6;
+        }}
+
+        header {{
+            background: linear-gradient(135deg, {COLORS['primary']} 0%, #A80410 100%);
+            color: white;
+            padding: 32px 24px;
+            text-align: center;
+        }}
+
+        header h1 {{
+            margin: 0;
+            font-size: 32px;
+            font-weight: 700;
+        }}
+
+        header p {{
+            margin: 8px 0 0 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }}
+
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }}
+
+        .section {{
+            background: {COLORS['white']};
+            padding: 24px;
+            margin-bottom: 24px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+
+        h2 {{
+            color: {COLORS['secondary']};
+            border-bottom: 2px solid {COLORS['primary']};
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            font-size: 24px;
+        }}
+
+        h3 {{
+            color: {COLORS['dark']};
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }}
+
+        .metrics-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }}
+
+        .metric-card {{
+            background: {COLORS['light']};
+            border-left: 4px solid {COLORS['primary']};
+            padding: 16px;
+            border-radius: 4px;
+        }}
+
+        .metric-label {{
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            color: {COLORS['text_secondary']};
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        .metric-value {{
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            color: {COLORS['primary']};
+        }}
+
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 13px;
+        }}
+
+        table thead {{
+            background: {COLORS['light']};
+            border-bottom: 2px solid {COLORS['primary']};
+        }}
+
+        table th {{
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: {COLORS['text_primary']};
+        }}
+
+        table td {{
+            padding: 12px 8px;
+            color: {COLORS['text_primary']};
+            border-bottom: 1px solid {COLORS['medium']};
+        }}
+
+        table tr:hover {{
+            background: {COLORS['light']};
+        }}
+
+        .top-performers {{
+            background: {COLORS['light']};
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }}
+
+        .performer-item {{
+            padding: 8px 0;
+            border-bottom: 1px solid {COLORS['medium']};
+        }}
+
+        .performer-item:last-child {{
+            border-bottom: none;
+        }}
+
+        .performer-name {{
+            font-weight: 600;
+            color: {COLORS['primary']};
+        }}
+
+        footer {{
+            background: {COLORS['secondary']};
+            color: white;
+            padding: 16px 24px;
+            text-align: center;
+            font-size: 12px;
+            margin-top: 32px;
+        }}
+
+        @media (max-width: 768px) {{
+            .container {{
+                padding: 12px;
+            }}
+
+            .metrics-grid {{
+                grid-template-columns: 1fr;
+            }}
+
+            header h1 {{
+                font-size: 24px;
+            }}
+
+            h2 {{
+                font-size: 18px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RELATÓRIO DE FUNIL DE VENDAS</h1>
+        <p>KAVAK Brasil | Análise de Conversão</p>
+        <p>Período: {self.date_obj.strftime('%d/%m/%Y')}</p>
+    </header>
+
+    <div class="container">
+        <!-- Resumo Executivo -->
+        <section class="section">
+            <h2>📊 Resumo Executivo</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Total de Oportunidades</div>
+                    <div class="metric-value">{metrics.get('total_opportunities', 0)}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total de Visitas</div>
+                    <div class="metric-value">{metrics.get('total_visits', 0)}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Visitas Confirmadas</div>
+                    <div class="metric-value">{metrics.get('total_confirmed_visits', 0)}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Média de Visitas/Oppt</div>
+                    <div class="metric-value">{metrics.get('avg_visits_per_oppt', 0):.2f}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Taxa de Conversão Geral</div>
+                    <div class="metric-value">{metrics.get('general_conversion_rate', 0):.2f}%</div>
+                </div>
+            </div>
+
+            <h3>👤 Top 3 Vendedores (por conversão)</h3>
+            <div class="top-performers">
+        """
+
+        for i, (owner, data) in enumerate(self.calculator.get_top_performers(3), 1):
+            conv = data.get("conversion_rate", 0)
+            oppts = data.get("oppts", 0)
+            html += f"""
+                <div class="performer-item">
+                    <span>{i}. <span class="performer-name">{owner}</span> - {conv:.2f}% conversão ({oppts} oppts)</span>
+                </div>
+            """
+
+        html += """
+            </div>
+        </section>
+
+        <!-- Análise Quantitativa -->
+        <section class="section">
+            <h2>📈 Análise Quantitativa</h2>
+
+            <h3>Oportunidades por Responsável</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Responsável</th>
+                        <th style="text-align: right;">Qtd Oppts</th>
+                        <th style="text-align: right;">% Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+
+        total_oppts = sum(o["oppts"] for o in by_owner.values())
+        for owner in sorted(by_owner.keys()):
+            qtd = by_owner[owner]["oppts"]
+            pct = (qtd / total_oppts * 100) if total_oppts > 0 else 0
+            html += f"""
+                    <tr>
+                        <td>{owner}</td>
+                        <td style="text-align: right;">{qtd}</td>
+                        <td style="text-align: right;">{pct:.2f}%</td>
+                    </tr>
+            """
+
+        html += """
+                </tbody>
+            </table>
+
+            <h3>Conversão por Responsável</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Responsável</th>
+                        <th style="text-align: right;">Ganhadas</th>
+                        <th style="text-align: right;">Perdidas</th>
+                        <th style="text-align: right;">Conversão</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+
+        for owner in sorted(by_owner.keys()):
+            won = by_owner[owner]["won"]
+            lost = by_owner[owner]["lost"]
+            conv = by_owner[owner]["conversion_rate"]
+            html += f"""
+                    <tr>
+                        <td>{owner}</td>
+                        <td style="text-align: right;">{won}</td>
+                        <td style="text-align: right;">{lost}</td>
+                        <td style="text-align: right;">{conv:.2f}%</td>
+                    </tr>
+            """
+
+        html += """
+                </tbody>
+            </table>
+
+            <h3>Análise por Tipo de Operação</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th style="text-align: right;">Qtd Oppts</th>
+                        <th style="text-align: right;">Conv %</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+
+        for oppt_type in sorted(by_type.keys()):
+            qtd = by_type[oppt_type]["oppts"]
+            conv = by_type[oppt_type]["conversion_rate"]
+            html += f"""
+                    <tr>
+                        <td>{oppt_type}</td>
+                        <td style="text-align: right;">{qtd}</td>
+                        <td style="text-align: right;">{conv:.2f}%</td>
+                    </tr>
+            """
+
+        html += """
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Análise Qualitativa -->
+        <section class="section">
+            <h2>💡 Insights e Análise Qualitativa</h2>
+        """
+
+        # Insights
+        top_oppts = max(by_owner.items(), key=lambda x: x[1]["oppts"])
+        top_conv = max(by_owner.items(), key=lambda x: x[1]["conversion_rate"])
+        best_type = max(by_type.items(), key=lambda x: x[1]["conversion_rate"]) if by_type else ("N/A", {})
+
+        html += f"""
+            <h3>1. Vendedor com Maior Número de Oportunidades</h3>
+            <p><strong>{top_oppts[0]}</strong> - {top_oppts[1]['oppts']} oportunidades ({top_oppts[1]['oppts']/total_oppts*100:.1f}% do total)</p>
+
+            <h3>2. Vendedor com Maior Taxa de Conversão</h3>
+            <p><strong>{top_conv[0]}</strong> - {top_conv[1]['conversion_rate']:.2f}% de conversão ({top_conv[1]['oppts']} oppts)</p>
+
+            <h3>3. Tipo de Operação com Melhor Conversão</h3>
+            <p><strong>{best_type[0]}</strong> - {best_type[1].get('conversion_rate', 0):.2f}% de conversão ({best_type[1].get('oppts', 0)} oppts)</p>
+        </section>
+    </div>
+
+    <footer>
+        <p>Processado em: {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}</p>
+        <p>KAVAK Brasil - Análise de Vendas</p>
+    </footer>
+</body>
+</html>
+"""
+        return html
+
+
+class LogWriter:
+    """Escreve logs estruturados."""
+
+    @staticmethod
+    def write(filepath: Path, logs: List[str]):
+        """Escreve arquivo de log."""
+        content = []
+        content.append("=" * 80)
+        content.append("LOG DE PROCESSAMENTO".center(80))
+        content.append(f"Iniciado: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}".center(80))
+        content.append("=" * 80)
+        content.append("")
+
+        for log in logs:
+            content.append(log)
+
+        content.append("")
+        content.append("=" * 80)
+        content.append(f"Finalizado: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}".center(80))
+        content.append("=" * 80)
+
+        filepath.write_text("\n".join(content), encoding='utf-8')
+
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+def main():
+    """Função principal."""
+    print("\n" + "=" * 80)
+    print("WORKFLOW AUTOMATIZADO - RELATÓRIO DE FUNIL DE VENDAS KAVAK")
+    print("=" * 80 + "\n")
+
+    # Inicializa processador
+    processor = DataProcessor()
+
+    # Encontra data mais recente
+    date_str = processor.find_latest_input_date()
+    if not date_str:
+        processor.add_log("Encerrando: nenhum dado para processar", "ERROR")
+        return False
+
+    # Processa dados
+    if not processor.process(date_str):
+        processor.add_log("Encerrando: falha no processamento", "ERROR")
+        return False
+
+    # Calcula métricas
+    calculator = MetricsCalculator(processor)
+    calculator.calculate_all()
+
+    # Cria diretório de saída
+    output_folder = OUTPUT_DIR / date_str
+    output_folder.mkdir(parents=True, exist_ok=True)
+
+    # Gera relatórios
+    processor.add_log("[ETAPA 5] GERAÇÃO DE RELATÓRIOS")
+
+    generator = ReportGenerator(processor, calculator, date_str)
+
+    # TXT
+    txt_content = generator.generate_txt()
+    txt_file = output_folder / REPORT_TXT_TEMPLATE.format(date=date_str)
+    txt_file.write_text(txt_content, encoding='utf-8')
+    processor.add_log(f"✓ Relatório TXT gerado: {txt_file.name}")
+
+    # HTML
+    html_content = generator.generate_html()
+    html_file = output_folder / REPORT_HTML_TEMPLATE.format(date=date_str)
+    html_file.write_text(html_content, encoding='utf-8')
+    processor.add_log(f"✓ Relatório HTML gerado: {html_file.name}")
+
+    # JSON
+    json_file = output_folder / METRICS_JSON_TEMPLATE
+    json_file.write_text(json.dumps(calculator.metrics, indent=2, ensure_ascii=False), encoding='utf-8')
+    processor.add_log(f"✓ Métricas JSON geradas: {json_file.name}")
+
+    # Logs
+    log_file = output_folder / LOG_FILE_TEMPLATE
+    LogWriter.write(log_file, processor.logs)
+    processor.add_log(f"✓ Log salvo: {log_file.name}")
+
+    # Resumo final
+    processor.add_log("")
+    processor.add_log("=" * 80)
+    processor.add_log("✓ SUCESSO - Processamento concluído")
+    processor.add_log("=" * 80)
+
+    print("\n" + "=" * 80)
+    print(f"✓ RELATÓRIOS GERADOS EM: {output_folder}")
+    print("=" * 80 + "\n")
+
+    return True
+
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)
